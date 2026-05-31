@@ -128,12 +128,17 @@
             return ik(dt.getDate())+'-'+ik(e.getDate())+'.'+ik(dt.getMonth()+1)+'.'+dt.getFullYear();
         return ik(dt.getDate())+'.'+ik(dt.getMonth()+1)+'-'+ik(e.getDate())+'.'+ik(e.getMonth()+1)+'.'+e.getFullYear();
     }
+    // E-PASAPORT için bir gün öncesi
+    function oncekiStr(dt){
+        var o=new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()-1);
+        return ik(o.getDate())+'.'+ik(o.getMonth()+1)+'.'+o.getFullYear();
+    }
 
     window.vrOnizle = function(){
         var v=document.getElementById('vr-tarih').value, el=document.getElementById('vr-onizleme');
         if(!v){ el.innerHTML='<span class="bos">Tarih seçince gündüz ve gece tarihleri burada görünecek.</span>'; return; }
         var dt=parcala(v);
-        el.innerHTML='Gündüz: <b>'+gunduzStr(dt)+'</b><br>Gece: <b>'+geceStr(dt)+'</b>';
+        el.innerHTML='Gündüz: <b>'+gunduzStr(dt)+'</b><br>Gece: <b>'+geceStr(dt)+'</b><br>E-Pasaport (önceki gün): <b>'+oncekiStr(dt)+'</b>';
     };
 
     window.vardiyaRaporuOlustur = async function(){
@@ -141,7 +146,7 @@
         var v=document.getElementById('vr-tarih').value;
         if(!v){ durum.style.color='var(--err)'; durum.textContent='Önce bir tarih seç.'; return; }
         if(typeof JSZip==='undefined'){ durum.style.color='var(--err)'; durum.textContent='JSZip yüklenemedi (internet bağlantısını kontrol et).'; return; }
-        var dt=parcala(v), gunduz=gunduzStr(dt), gece=geceStr(dt);
+        var dt=parcala(v), gunduz=gunduzStr(dt), gece=geceStr(dt), onceki=oncekiStr(dt);
         btn.disabled=true; durum.style.color='var(--text-secondary)'; durum.textContent='Şablon indiriliyor...';
         try{
             var resp=await fetch(RAW_SABLON, {cache:'no-store'});
@@ -158,6 +163,14 @@
                 .split('>x/2026<').join('>'+gunduz+'<')
                 .split('(x.2026)').join('('+gunduz+')');
             zip.file('xl/sharedStrings.xml', xml);
+            // E-PASAPORT (sheet6) B4 -> bir gün öncesi (transferden bağımsız, satır içi)
+            var s6=zip.file('xl/worksheets/sheet6.xml');
+            if(s6){
+                var x6=await s6.async('string');
+                x6=x6.split('<c r="B4" s="54" t="s"><v>50</v></c>')
+                     .join('<c r="B4" s="54" t="inlineStr"><is><t>'+onceki+'</t></is></c>');
+                zip.file('xl/worksheets/sheet6.xml', x6);
+            }
             var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE',
                 mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
             var adi='Terminal Operasyon Vardiya Raporu '+gunduz+' (07.00-19.00).xlsx';
