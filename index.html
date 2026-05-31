@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>İGA · Terminal Operasyon</title>
+<style>
+    body.light {
+        --bg-page:#eef2f8; --bg-header:#1a3a6b; --bg-card:#ffffff; --border-card:#d0e0f0;
+        --bg-btn-main:#1a3a6b; --text-btn-main:#ffffff; --text-primary:#1a2744;
+        --text-secondary:#4a6a9a; --text-label:#6a8cba; --bg-toggle:rgba(255,255,255,0.18);
+        --border-toggle:rgba(255,255,255,0.35); --text-toggle:#ffffff; --text-header-sub:#8ab4de;
+        --card-shadow:rgba(26,58,107,0.10); --card-hover:#f4f8ff; --accent:#1a3a6b;
+    }
+    body.dark {
+        --bg-page:#0b1625; --bg-header:#0a1628; --bg-card:rgba(255,255,255,0.04); --border-card:rgba(255,255,255,0.08);
+        --bg-btn-main:#1e5799; --text-btn-main:#ffffff; --text-primary:#e8f0fb;
+        --text-secondary:#8ab8e0; --text-label:rgba(232,240,251,0.42); --bg-toggle:rgba(255,255,255,0.08);
+        --border-toggle:rgba(255,255,255,0.15); --text-toggle:rgba(232,240,251,0.75); --text-header-sub:#5b8fc4;
+        --card-shadow:rgba(0,0,0,0.35); --card-hover:rgba(91,155,213,0.10); --accent:#5b9bd5;
+    }
+    *,*::before,*::after{ box-sizing:border-box; }
+    body{
+        font-family:'Tahoma',sans-serif; margin:0; min-height:100vh;
+        background:var(--bg-page); color:var(--text-primary);
+        display:flex; flex-direction:column; transition:background .25s,color .25s;
+    }
+    .topbar{
+        background:var(--bg-header); padding:14px 22px;
+        display:flex; align-items:center; justify-content:space-between;
+    }
+    .topbar-left{ display:flex; align-items:center; gap:12px; }
+    .logo{
+        width:38px; height:38px; background:rgba(255,255,255,0.15); border-radius:8px;
+        display:flex; align-items:center; justify-content:center; font-weight:bold; color:#fff; font-size:13px;
+    }
+    .topbar-title{ color:#fff; font-size:15px; font-weight:bold; line-height:1.2; }
+    .topbar-sub{ color:var(--text-header-sub); font-size:11px; }
+    .theme-toggle{
+        background:var(--bg-toggle); color:var(--text-toggle); border:1px solid var(--border-toggle);
+        padding:7px 13px; border-radius:8px; font-size:12px; font-weight:bold;
+        font-family:'Tahoma',sans-serif; cursor:pointer;
+    }
+    .wrap{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 20px; }
+    h1{ font-size:24px; margin:0 0 6px; text-align:center; }
+    .subtitle{ color:var(--text-secondary); font-size:14px; margin:0 0 34px; text-align:center; }
+    .cards{ display:flex; gap:22px; flex-wrap:wrap; justify-content:center; width:100%; max-width:760px; }
+    .card{
+        flex:1 1 300px; max-width:340px; background:var(--bg-card); border:1px solid var(--border-card);
+        border-radius:16px; padding:30px 26px; text-decoration:none; color:var(--text-primary);
+        box-shadow:0 6px 24px var(--card-shadow); transition:transform .15s, background .2s, box-shadow .2s;
+        display:flex; flex-direction:column; align-items:flex-start; cursor:pointer;
+    }
+    .card:hover{ transform:translateY(-4px); background:var(--card-hover); box-shadow:0 12px 30px var(--card-shadow); }
+    .card-icon{ font-size:38px; margin-bottom:14px; }
+    .card-title{ font-size:19px; font-weight:bold; margin-bottom:8px; color:var(--accent); }
+    .card-desc{ font-size:13px; color:var(--text-secondary); line-height:1.5; }
+    .card-arrow{ margin-top:18px; font-size:13px; font-weight:bold; color:var(--accent); }
+    .footer{ text-align:center; color:var(--text-label); font-size:11px; padding:16px; }
+    @media(max-width:680px){ .cards{ flex-direction:column; align-items:center; } .card{ max-width:420px; width:100%; } }
+</style>
+</head>
+<body class="light">
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="logo">İGA</div>
+            <div>
+                <div class="topbar-title">Terminal Operasyon</div>
+                <div class="topbar-sub">Raporlama Araçları</div>
+            </div>
+        </div>
+        <button class="theme-toggle" id="themeToggleBtn" onclick="toggleTheme()">🌙 Koyu</button>
+    </div>
+
+    <div class="wrap">
+        <h1>Ne yapmak istersin?</h1>
+        <p class="subtitle">Devam etmek için bir araç seç.</p>
+        <div class="cards">
+            <a class="card" href="tutanak.html">
+                <div class="card-icon">📝</div>
+                <div class="card-title">Tutanak Motoru</div>
+                <div class="card-desc">Kural ihlali tutanaklarını hazırla, Word çıktısı al, WhatsApp ile paylaş.</div>
+                <div class="card-arrow">Aç →</div>
+            </a>
+            <a class="card" href="vardiya.html">
+                <div class="card-icon">📊</div>
+                <div class="card-title">Vardiya Raporu</div>
+                <div class="card-desc">Tarihi seç, vardiya raporu Excel dosyasını otomatik doldurulmuş olarak indir.</div>
+                <div class="card-arrow">Aç →</div>
+            </a>
+        </div>
+    </div>
+
+    <div class="footer">Terminal Operasyon · Vardiya Raporlama</div>
+
+<script>
+(function(){
+    var saved = localStorage.getItem('vardiyaTema');
+    if(saved){ document.body.className = saved; }
+    function setLabel(){
+        document.getElementById('themeToggleBtn').textContent =
+            document.body.classList.contains('dark') ? '☀️ Açık' : '🌙 Koyu';
+    }
+    setLabel();
+    window.toggleTheme = function(){
+        var b=document.body;
+        if(b.classList.contains('light')) b.classList.replace('light','dark');
+        else b.classList.replace('dark','light');
+        localStorage.setItem('vardiyaTema', b.className);
+        setLabel();
+    };
+})();
+</script>
+</body>
+</html>
