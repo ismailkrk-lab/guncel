@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vardiya Raporu · Terminal Operasyon</title>
+<title>Günlük Rapor · Terminal Operasyon</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -13,7 +13,7 @@
         --text-primary:#1a2744; --text-secondary:#4a6a9a; --text-label:#6a8cba;
         --bg-toggle:rgba(255,255,255,0.18); --border-toggle:rgba(255,255,255,0.35); --text-toggle:#ffffff;
         --text-header-sub:#8ab4de; --card-shadow:rgba(26,58,107,0.10); --bg-info:#e8f0fb; --accent:#1a3a6b;
-        --ok:#1e7e34; --err:#c0392b;
+        --ok:#1e7e34; --err:#c0392b; --bg-sel:#f4f8ff; --bg-note:#fff8e6; --border-note:#f0c060; --text-note:#a07a10;
     }
     body.dark {
         --bg-page:#0b1625; --bg-header:#0a1628; --bg-card:rgba(255,255,255,0.04); --border-card:rgba(255,255,255,0.08);
@@ -21,14 +21,10 @@
         --text-primary:#e8f0fb; --text-secondary:#8ab8e0; --text-label:rgba(232,240,251,0.42);
         --bg-toggle:rgba(255,255,255,0.08); --border-toggle:rgba(255,255,255,0.15); --text-toggle:rgba(232,240,251,0.75);
         --text-header-sub:#5b8fc4; --card-shadow:rgba(0,0,0,0.35); --bg-info:rgba(91,155,213,0.10); --accent:#5b9bd5;
-        --ok:#4ade80; --err:#f87171;
+        --ok:#4ade80; --err:#f87171; --bg-sel:rgba(91,155,213,0.07); --bg-note:rgba(201,160,30,0.12); --border-note:rgba(201,160,30,0.3); --text-note:rgba(232,210,120,0.75);
     }
     *,*::before,*::after{ box-sizing:border-box; }
-    body{
-        font-family:'Tahoma',sans-serif; margin:0; min-height:100vh;
-        background:var(--bg-page); color:var(--text-primary);
-        display:flex; flex-direction:column; transition:background .25s,color .25s;
-    }
+    body{ font-family:'Tahoma',sans-serif; margin:0; min-height:100vh; background:var(--bg-page); color:var(--text-primary); display:flex; flex-direction:column; transition:background .25s,color .25s; }
     .topbar{ background:var(--bg-header); padding:14px 22px; display:flex; align-items:center; justify-content:space-between; }
     .topbar-left{ display:flex; align-items:center; gap:12px; }
     .logo{ width:38px; height:38px; background:rgba(255,255,255,0.15); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:bold; color:#fff; font-size:13px; }
@@ -39,23 +35,25 @@
     .wrap{ flex:1; display:flex; align-items:flex-start; justify-content:center; padding:34px 20px; }
     .card{ width:100%; max-width:480px; background:var(--bg-card); border:1px solid var(--border-card); border-radius:16px; padding:28px; box-shadow:0 6px 24px var(--card-shadow); }
     .card h1{ font-size:20px; margin:0 0 4px; }
-    .card .desc{ font-size:13px; color:var(--text-secondary); margin:0 0 22px; line-height:1.5; }
-    label{ display:block; font-size:12px; font-weight:bold; color:var(--text-label); margin:0 0 6px; }
-    input[type=date]{
-        width:100%; padding:11px 12px; font-size:15px; font-family:'Tahoma',sans-serif;
-        background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-input);
-        border-radius:9px; outline:none;
-    }
+    .card .desc{ font-size:13px; color:var(--text-secondary); margin:0 0 20px; line-height:1.5; }
+    .step-label{ font-size:12px; font-weight:bold; color:var(--text-label); margin:0 0 8px; }
+    .shift-toggle{ display:flex; gap:12px; margin-bottom:6px; }
+    .shift-btn{ flex:1; padding:16px 10px; font-size:14px; font-weight:bold; font-family:'Tahoma',sans-serif; background:var(--bg-input); color:var(--text-primary); border:2px solid var(--border-input); border-radius:12px; cursor:pointer; transition:all .15s; }
+    .shift-btn.aktif{ border-color:var(--accent); background:var(--bg-sel); color:var(--accent); }
+    label.fld{ display:block; font-size:12px; font-weight:bold; color:var(--text-label); margin:18px 0 6px; }
+    input[type=date]{ width:100%; padding:11px 12px; font-size:15px; font-family:'Tahoma',sans-serif; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-input); border-radius:9px; outline:none; }
     .onizleme{ margin:14px 0 4px; background:var(--bg-info); border:1px solid var(--border-card); border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.7; min-height:20px; }
     .onizleme b{ color:var(--accent); }
     .onizleme .bos{ color:var(--text-label); font-weight:normal; }
-    .btn-main{
-        width:100%; margin-top:18px; padding:14px; font-size:15px; font-weight:bold; font-family:'Tahoma',sans-serif;
-        background:var(--bg-btn-main); color:var(--text-btn-main); border:none; border-radius:10px; cursor:pointer; transition:opacity .2s;
-    }
+    .secimler{ margin-top:18px; display:flex; flex-direction:column; gap:2px; }
+    .chk{ display:flex; align-items:center; gap:10px; padding:11px 12px; border:1px solid var(--border-input); border-radius:9px; font-size:14px; cursor:pointer; margin-bottom:8px; background:var(--bg-input); }
+    .chk input{ width:18px; height:18px; cursor:pointer; accent-color:var(--accent); }
+    .chk small{ display:block; color:var(--text-secondary); font-size:11px; font-weight:normal; }
+    .chk.hepsi{ background:var(--bg-sel); border-color:var(--accent); font-weight:bold; }
+    .btn-main{ width:100%; margin-top:8px; padding:14px; font-size:15px; font-weight:bold; font-family:'Tahoma',sans-serif; background:var(--bg-btn-main); color:var(--text-btn-main); border:none; border-radius:10px; cursor:pointer; transition:opacity .2s; }
     .btn-main:disabled{ opacity:.55; cursor:default; }
-    .durum{ font-size:12px; margin-top:12px; min-height:16px; text-align:center; }
-    .not{ margin-top:20px; font-size:11px; color:var(--text-label); line-height:1.6; }
+    .durum{ font-size:12px; margin-top:12px; min-height:16px; text-align:center; line-height:1.6; }
+    .note-box{ margin-top:6px; background:var(--bg-note); border:1px solid var(--border-note); color:var(--text-note); border-radius:10px; padding:16px; font-size:14px; text-align:center; font-weight:bold; }
     .footer{ text-align:center; color:var(--text-label); font-size:11px; padding:16px; }
 </style>
 </head>
@@ -64,7 +62,7 @@
         <div class="topbar-left">
             <div class="logo">İGA</div>
             <div>
-                <div class="topbar-title">Vardiya Raporu</div>
+                <div class="topbar-title">Günlük Rapor</div>
                 <div class="topbar-sub">Terminal Operasyon</div>
             </div>
         </div>
@@ -76,21 +74,35 @@
 
     <div class="wrap">
         <div class="card">
-            <h1>Excel Vardiya Raporu</h1>
-            <p class="desc">Tarihi seç, dosya otomatik doldurulup insin. Şablonun tüm biçimi korunur; yalnızca tarihler değişir.</p>
+            <h1>Günlük Rapor</h1>
+            <p class="desc">Önce vardiyanı seç, tarihi gir, sonra oluşturmak istediğin dosyaları işaretle.</p>
 
-            <label for="vr-tarih">Rapor Tarihi</label>
-            <input type="date" id="vr-tarih" oninput="vrOnizle()">
+            <div class="step-label">1 · Vardiya</div>
+            <div class="shift-toggle">
+                <button class="shift-btn" id="btn-gunduz" onclick="vardiyaSec('gunduz')">☀️ Gündüz<br>07.00 - 19.00</button>
+                <button class="shift-btn" id="btn-gece" onclick="vardiyaSec('gece')">🌙 Gece<br>19.00 - 07.00</button>
+            </div>
 
-            <div class="onizleme" id="vr-onizleme"><span class="bos">Tarih seçince gündüz ve gece tarihleri burada görünecek.</span></div>
+            <!-- GÜNDÜZ -->
+            <div id="gunduz-panel" style="display:none;">
+                <label class="fld" for="vr-tarih">2 · Rapor Tarihi</label>
+                <input type="date" id="vr-tarih" oninput="vrOnizle()">
+                <div class="onizleme" id="vr-onizleme"><span class="bos">Tarih seçince tarihler burada görünecek.</span></div>
 
-            <button class="btn-main" id="vr-btn" onclick="vardiyaRaporuOlustur()">📊 Excel Raporu İndir</button>
-            <div class="durum" id="vr-durum"></div>
+                <div class="step-label" style="margin-top:18px;">3 · Hangi dosyalar?</div>
+                <div class="secimler">
+                    <label class="chk"><input type="checkbox" id="vr-excel" onchange="senkron()"><span>Excel — Vardiya Raporu<small>Terminal Operasyon Vardiya Raporu .xlsx</small></span></label>
+                    <label class="chk"><input type="checkbox" id="vr-ppt" onchange="senkron()"><span>PowerPoint — C Ekibi Faaliyet Özeti<small>C EKİBİ FAALİYET ÖZETİ .pptx</small></span></label>
+                    <label class="chk hepsi"><input type="checkbox" id="vr-hepsi" onchange="hepsiTikle()"><span>Hepsi</span></label>
+                </div>
 
-            <div class="not">
-                Doldurulan alanlar: gündüz/gece operasyonel faaliyet başlıkları, rötarlı uçuş başlıkları,
-                transferde bekleyen yolcular ve e-pasaport tarihleri. Gece tarihi otomatik olarak
-                "gün-ertesi gün" biçiminde yazılır (ör. 30-31.05.2026).
+                <button class="btn-main" id="vr-btn" onclick="olustur()">Oluştur ve İndir</button>
+                <div class="durum" id="vr-durum"></div>
+            </div>
+
+            <!-- GECE -->
+            <div id="gece-panel" style="display:none;">
+                <div class="note-box">🌙 Gece kuralları henüz eklenmedi.</div>
             </div>
         </div>
     </div>
@@ -101,81 +113,108 @@
 (function(){
     var saved = localStorage.getItem('vardiyaTema');
     if(saved){ document.body.className = saved; }
-    function setLabel(){
-        document.getElementById('themeToggleBtn').textContent =
-            document.body.classList.contains('dark') ? '☀️ Açık' : '🌙 Koyu';
-    }
+    function setLabel(){ document.getElementById('themeToggleBtn').textContent = document.body.classList.contains('dark') ? '☀️ Açık' : '🌙 Koyu'; }
     setLabel();
     window.toggleTheme = function(){
         var b=document.body;
-        if(b.classList.contains('light')) b.classList.replace('light','dark');
-        else b.classList.replace('dark','light');
+        if(b.classList.contains('light')) b.classList.replace('light','dark'); else b.classList.replace('dark','light');
         localStorage.setItem('vardiyaTema', b.className);
         setLabel();
     };
 })();
 
 (function(){
-    // Şablon, bu sayfayla AYNI klasörden çekilir. sablon.xlsx'i html'lerin yanına koyman yeter.
-    var RAW_SABLON = "sablon.xlsx";
-
     function ik(n){ return String(n).padStart(2,'0'); }
     function parcala(v){ var p=v.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
     function gunduzStr(dt){ return ik(dt.getDate())+'.'+ik(dt.getMonth()+1)+'.'+dt.getFullYear(); }
     function geceStr(dt){
         var e=new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()+1);
-        if(e.getMonth()===dt.getMonth())
-            return ik(dt.getDate())+'-'+ik(e.getDate())+'.'+ik(dt.getMonth()+1)+'.'+dt.getFullYear();
+        if(e.getMonth()===dt.getMonth()) return ik(dt.getDate())+'-'+ik(e.getDate())+'.'+ik(dt.getMonth()+1)+'.'+dt.getFullYear();
         return ik(dt.getDate())+'.'+ik(dt.getMonth()+1)+'-'+ik(e.getDate())+'.'+ik(e.getMonth()+1)+'.'+e.getFullYear();
     }
-    // E-PASAPORT için bir gün öncesi
-    function oncekiStr(dt){
-        var o=new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()-1);
-        return ik(o.getDate())+'.'+ik(o.getMonth()+1)+'.'+o.getFullYear();
-    }
+    function oncekiStr(dt){ var o=new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()-1); return ik(o.getDate())+'.'+ik(o.getMonth()+1)+'.'+o.getFullYear(); }
+
+    window.vardiyaSec = function(v){
+        document.getElementById('btn-gunduz').classList.toggle('aktif', v==='gunduz');
+        document.getElementById('btn-gece').classList.toggle('aktif', v==='gece');
+        document.getElementById('gunduz-panel').style.display = (v==='gunduz') ? 'block' : 'none';
+        document.getElementById('gece-panel').style.display   = (v==='gece')   ? 'block' : 'none';
+    };
 
     window.vrOnizle = function(){
         var v=document.getElementById('vr-tarih').value, el=document.getElementById('vr-onizleme');
-        if(!v){ el.innerHTML='<span class="bos">Tarih seçince gündüz ve gece tarihleri burada görünecek.</span>'; return; }
+        if(!v){ el.innerHTML='<span class="bos">Tarih seçince tarihler burada görünecek.</span>'; return; }
         var dt=parcala(v);
         el.innerHTML='Gündüz: <b>'+gunduzStr(dt)+'</b><br>Gece: <b>'+geceStr(dt)+'</b><br>E-Pasaport (önceki gün): <b>'+oncekiStr(dt)+'</b>';
     };
 
-    window.vardiyaRaporuOlustur = async function(){
+    // Kutucuk senkronizasyonu
+    window.senkron = function(){
+        var e=document.getElementById('vr-excel').checked, p=document.getElementById('vr-ppt').checked;
+        document.getElementById('vr-hepsi').checked = (e && p);
+    };
+    window.hepsiTikle = function(){
+        var h=document.getElementById('vr-hepsi').checked;
+        document.getElementById('vr-excel').checked = h;
+        document.getElementById('vr-ppt').checked = h;
+    };
+
+    // EXCEL üret
+    async function excelOlustur(dt){
+        var gunduz=gunduzStr(dt), gece=geceStr(dt), onceki=oncekiStr(dt);
+        var resp=await fetch('sablon.xlsx', {cache:'no-store'});
+        if(!resp.ok) throw new Error('Excel şablonu indirilemedi ('+resp.status+')');
+        var zip=await JSZip.loadAsync(await resp.arrayBuffer());
+        var ss=zip.file('xl/sharedStrings.xml');
+        if(!ss) throw new Error('sharedStrings.xml bulunamadı');
+        var xml=await ss.async('string');
+        xml = xml
+            .split('TARİH (07.00 - 19.00)').join(gunduz+' (07.00 - 19.00)')
+            .split('TARİH (19.00 - 07.00)').join(gece+' (19.00 - 07.00)')
+            .split('>x/2026<').join('>'+gunduz+'<')
+            .split('(x.2026)').join('('+gunduz+')');
+        zip.file('xl/sharedStrings.xml', xml);
+        var s6=zip.file('xl/worksheets/sheet6.xml');
+        if(s6){
+            var x6=await s6.async('string');
+            x6=x6.split('<c r="B4" s="54" t="s"><v>50</v></c>').join('<c r="B4" s="54" t="inlineStr"><is><t>'+onceki+'</t></is></c>');
+            zip.file('xl/worksheets/sheet6.xml', x6);
+        }
+        var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+        var adi='Terminal Operasyon Vardiya Raporu '+gunduz+' (07.00-19.00).xlsx';
+        saveAs(blob, adi);
+        return adi;
+    }
+
+    // POWERPOINT üret
+    async function pptOlustur(dt){
+        var gunduz=gunduzStr(dt);
+        var resp=await fetch('sablon.pptx', {cache:'no-store'});
+        if(!resp.ok) throw new Error('PowerPoint şablonu indirilemedi ('+resp.status+')');
+        var zip=await JSZip.loadAsync(await resp.arrayBuffer());
+        var s2=zip.file('ppt/slides/slide2.xml');
+        if(s2){ var x2=await s2.async('string'); zip.file('ppt/slides/slide2.xml', x2.split('TARİH').join(gunduz)); }
+        var sm=zip.file('ppt/slideMasters/slideMaster1.xml');
+        if(sm){ var xm=await sm.async('string'); zip.file('ppt/slideMasters/slideMaster1.xml', xm.split('TARİH').join(gunduz)); }
+        var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+        var adi='C EKİBİ FAALİYET ÖZETİ '+gunduz+' (07.00-19.00).pptx';
+        saveAs(blob, adi);
+        return adi;
+    }
+
+    window.olustur = async function(){
         var durum=document.getElementById('vr-durum'), btn=document.getElementById('vr-btn');
         var v=document.getElementById('vr-tarih').value;
         if(!v){ durum.style.color='var(--err)'; durum.textContent='Önce bir tarih seç.'; return; }
         if(typeof JSZip==='undefined'){ durum.style.color='var(--err)'; durum.textContent='JSZip yüklenemedi (internet bağlantısını kontrol et).'; return; }
-        var dt=parcala(v), gunduz=gunduzStr(dt), gece=geceStr(dt), onceki=oncekiStr(dt);
-        btn.disabled=true; durum.style.color='var(--text-secondary)'; durum.textContent='Şablon indiriliyor...';
+        var ex=document.getElementById('vr-excel').checked, pp=document.getElementById('vr-ppt').checked;
+        if(!ex && !pp){ durum.style.color='var(--err)'; durum.textContent='En az bir dosya türü seç (Excel veya PowerPoint).'; return; }
+        var dt=parcala(v), inenler=[];
+        btn.disabled=true; durum.style.color='var(--text-secondary)';
         try{
-            var resp=await fetch(RAW_SABLON, {cache:'no-store'});
-            if(!resp.ok) throw new Error('Şablon indirilemedi ('+resp.status+')');
-            var buf=await resp.arrayBuffer();
-            durum.textContent='Tarihler işleniyor...';
-            var zip=await JSZip.loadAsync(buf);
-            var ss=zip.file('xl/sharedStrings.xml');
-            if(!ss) throw new Error('sharedStrings.xml bulunamadı');
-            var xml=await ss.async('string');
-            xml = xml
-                .split('TARİH (07.00 - 19.00)').join(gunduz+' (07.00 - 19.00)')
-                .split('TARİH (19.00 - 07.00)').join(gece+' (19.00 - 07.00)')
-                .split('>x/2026<').join('>'+gunduz+'<')
-                .split('(x.2026)').join('('+gunduz+')');
-            zip.file('xl/sharedStrings.xml', xml);
-            // E-PASAPORT (sheet6) B4 -> bir gün öncesi (transferden bağımsız, satır içi)
-            var s6=zip.file('xl/worksheets/sheet6.xml');
-            if(s6){
-                var x6=await s6.async('string');
-                x6=x6.split('<c r="B4" s="54" t="s"><v>50</v></c>')
-                     .join('<c r="B4" s="54" t="inlineStr"><is><t>'+onceki+'</t></is></c>');
-                zip.file('xl/worksheets/sheet6.xml', x6);
-            }
-            var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE',
-                mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-            var adi='Terminal Operasyon Vardiya Raporu '+gunduz+' (07.00-19.00).xlsx';
-            saveAs(blob, adi);
-            durum.style.color='var(--ok)'; durum.textContent='İndirildi: '+adi;
+            if(ex){ durum.textContent='Excel hazırlanıyor...'; inenler.push(await excelOlustur(dt)); }
+            if(pp){ durum.textContent='PowerPoint hazırlanıyor...'; inenler.push(await pptOlustur(dt)); }
+            durum.style.color='var(--ok)'; durum.innerHTML='İndirildi:<br>'+inenler.join('<br>');
         }catch(e){
             durum.style.color='var(--err)'; durum.textContent='Hata: '+(e.message||e);
         }finally{
