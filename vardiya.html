@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vardiya Raporu · Terminal Operasyon</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+    body.light {
+        --bg-page:#eef2f8; --bg-header:#1a3a6b; --bg-card:#ffffff; --border-card:#d0e0f0;
+        --bg-input:#ffffff; --border-input:#c2d4ec; --bg-btn-main:#1a3a6b; --text-btn-main:#ffffff;
+        --text-primary:#1a2744; --text-secondary:#4a6a9a; --text-label:#6a8cba;
+        --bg-toggle:rgba(255,255,255,0.18); --border-toggle:rgba(255,255,255,0.35); --text-toggle:#ffffff;
+        --text-header-sub:#8ab4de; --card-shadow:rgba(26,58,107,0.10); --bg-info:#e8f0fb; --accent:#1a3a6b;
+        --ok:#1e7e34; --err:#c0392b;
+    }
+    body.dark {
+        --bg-page:#0b1625; --bg-header:#0a1628; --bg-card:rgba(255,255,255,0.04); --border-card:rgba(255,255,255,0.08);
+        --bg-input:rgba(255,255,255,0.07); --border-input:rgba(255,255,255,0.11); --bg-btn-main:#1e5799; --text-btn-main:#ffffff;
+        --text-primary:#e8f0fb; --text-secondary:#8ab8e0; --text-label:rgba(232,240,251,0.42);
+        --bg-toggle:rgba(255,255,255,0.08); --border-toggle:rgba(255,255,255,0.15); --text-toggle:rgba(232,240,251,0.75);
+        --text-header-sub:#5b8fc4; --card-shadow:rgba(0,0,0,0.35); --bg-info:rgba(91,155,213,0.10); --accent:#5b9bd5;
+        --ok:#4ade80; --err:#f87171;
+    }
+    *,*::before,*::after{ box-sizing:border-box; }
+    body{
+        font-family:'Tahoma',sans-serif; margin:0; min-height:100vh;
+        background:var(--bg-page); color:var(--text-primary);
+        display:flex; flex-direction:column; transition:background .25s,color .25s;
+    }
+    .topbar{ background:var(--bg-header); padding:14px 22px; display:flex; align-items:center; justify-content:space-between; }
+    .topbar-left{ display:flex; align-items:center; gap:12px; }
+    .logo{ width:38px; height:38px; background:rgba(255,255,255,0.15); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:bold; color:#fff; font-size:13px; }
+    .topbar-title{ color:#fff; font-size:15px; font-weight:bold; line-height:1.2; }
+    .topbar-sub{ color:var(--text-header-sub); font-size:11px; }
+    .topbar-right{ display:flex; gap:8px; align-items:center; }
+    .pill{ background:var(--bg-toggle); color:var(--text-toggle); border:1px solid var(--border-toggle); padding:7px 13px; border-radius:8px; font-size:12px; font-weight:bold; font-family:'Tahoma',sans-serif; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; }
+    .wrap{ flex:1; display:flex; align-items:flex-start; justify-content:center; padding:34px 20px; }
+    .card{ width:100%; max-width:480px; background:var(--bg-card); border:1px solid var(--border-card); border-radius:16px; padding:28px; box-shadow:0 6px 24px var(--card-shadow); }
+    .card h1{ font-size:20px; margin:0 0 4px; }
+    .card .desc{ font-size:13px; color:var(--text-secondary); margin:0 0 22px; line-height:1.5; }
+    label{ display:block; font-size:12px; font-weight:bold; color:var(--text-label); margin:0 0 6px; }
+    input[type=date]{
+        width:100%; padding:11px 12px; font-size:15px; font-family:'Tahoma',sans-serif;
+        background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-input);
+        border-radius:9px; outline:none;
+    }
+    .onizleme{ margin:14px 0 4px; background:var(--bg-info); border:1px solid var(--border-card); border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.7; min-height:20px; }
+    .onizleme b{ color:var(--accent); }
+    .onizleme .bos{ color:var(--text-label); font-weight:normal; }
+    .btn-main{
+        width:100%; margin-top:18px; padding:14px; font-size:15px; font-weight:bold; font-family:'Tahoma',sans-serif;
+        background:var(--bg-btn-main); color:var(--text-btn-main); border:none; border-radius:10px; cursor:pointer; transition:opacity .2s;
+    }
+    .btn-main:disabled{ opacity:.55; cursor:default; }
+    .durum{ font-size:12px; margin-top:12px; min-height:16px; text-align:center; }
+    .not{ margin-top:20px; font-size:11px; color:var(--text-label); line-height:1.6; }
+    .footer{ text-align:center; color:var(--text-label); font-size:11px; padding:16px; }
+</style>
+</head>
+<body class="light">
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="logo">İGA</div>
+            <div>
+                <div class="topbar-title">Vardiya Raporu</div>
+                <div class="topbar-sub">Terminal Operasyon</div>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <a href="index.html" class="pill">← Ana Menü</a>
+            <button class="pill" id="themeToggleBtn" onclick="toggleTheme()">🌙 Koyu</button>
+        </div>
+    </div>
+
+    <div class="wrap">
+        <div class="card">
+            <h1>Excel Vardiya Raporu</h1>
+            <p class="desc">Tarihi seç, dosya otomatik doldurulup insin. Şablonun tüm biçimi korunur; yalnızca tarihler değişir.</p>
+
+            <label for="vr-tarih">Rapor Tarihi</label>
+            <input type="date" id="vr-tarih" oninput="vrOnizle()">
+
+            <div class="onizleme" id="vr-onizleme"><span class="bos">Tarih seçince gündüz ve gece tarihleri burada görünecek.</span></div>
+
+            <button class="btn-main" id="vr-btn" onclick="vardiyaRaporuOlustur()">📊 Excel Raporu İndir</button>
+            <div class="durum" id="vr-durum"></div>
+
+            <div class="not">
+                Doldurulan alanlar: gündüz/gece operasyonel faaliyet başlıkları, rötarlı uçuş başlıkları,
+                transferde bekleyen yolcular ve e-pasaport tarihleri. Gece tarihi otomatik olarak
+                "gün-ertesi gün" biçiminde yazılır (ör. 30-31.05.2026).
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">Terminal Operasyon · Vardiya Raporlama</div>
+
+<script>
+(function(){
+    var saved = localStorage.getItem('vardiyaTema');
+    if(saved){ document.body.className = saved; }
+    function setLabel(){
+        document.getElementById('themeToggleBtn').textContent =
+            document.body.classList.contains('dark') ? '☀️ Açık' : '🌙 Koyu';
+    }
+    setLabel();
+    window.toggleTheme = function(){
+        var b=document.body;
+        if(b.classList.contains('light')) b.classList.replace('light','dark');
+        else b.classList.replace('dark','light');
+        localStorage.setItem('vardiyaTema', b.className);
+        setLabel();
+    };
+})();
+
+(function(){
+    // Şablon, bu sayfayla AYNI klasörden çekilir. sablon.xlsx'i html'lerin yanına koyman yeter.
+    var RAW_SABLON = "sablon.xlsx";
+
+    function ik(n){ return String(n).padStart(2,'0'); }
+    function parcala(v){ var p=v.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
+    function gunduzStr(dt){ return ik(dt.getDate())+'.'+ik(dt.getMonth()+1)+'.'+dt.getFullYear(); }
+    function geceStr(dt){
+        var e=new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()+1);
+        if(e.getMonth()===dt.getMonth())
+            return ik(dt.getDate())+'-'+ik(e.getDate())+'.'+ik(dt.getMonth()+1)+'.'+dt.getFullYear();
+        return ik(dt.getDate())+'.'+ik(dt.getMonth()+1)+'-'+ik(e.getDate())+'.'+ik(e.getMonth()+1)+'.'+e.getFullYear();
+    }
+
+    window.vrOnizle = function(){
+        var v=document.getElementById('vr-tarih').value, el=document.getElementById('vr-onizleme');
+        if(!v){ el.innerHTML='<span class="bos">Tarih seçince gündüz ve gece tarihleri burada görünecek.</span>'; return; }
+        var dt=parcala(v);
+        el.innerHTML='Gündüz: <b>'+gunduzStr(dt)+'</b><br>Gece: <b>'+geceStr(dt)+'</b>';
+    };
+
+    window.vardiyaRaporuOlustur = async function(){
+        var durum=document.getElementById('vr-durum'), btn=document.getElementById('vr-btn');
+        var v=document.getElementById('vr-tarih').value;
+        if(!v){ durum.style.color='var(--err)'; durum.textContent='Önce bir tarih seç.'; return; }
+        if(typeof JSZip==='undefined'){ durum.style.color='var(--err)'; durum.textContent='JSZip yüklenemedi (internet bağlantısını kontrol et).'; return; }
+        var dt=parcala(v), gunduz=gunduzStr(dt), gece=geceStr(dt);
+        btn.disabled=true; durum.style.color='var(--text-secondary)'; durum.textContent='Şablon indiriliyor...';
+        try{
+            var resp=await fetch(RAW_SABLON, {cache:'no-store'});
+            if(!resp.ok) throw new Error('Şablon indirilemedi ('+resp.status+')');
+            var buf=await resp.arrayBuffer();
+            durum.textContent='Tarihler işleniyor...';
+            var zip=await JSZip.loadAsync(buf);
+            var ss=zip.file('xl/sharedStrings.xml');
+            if(!ss) throw new Error('sharedStrings.xml bulunamadı');
+            var xml=await ss.async('string');
+            xml = xml
+                .split('TARİH (07.00 - 19.00)').join(gunduz+' (07.00 - 19.00)')
+                .split('TARİH (19.00 - 07.00)').join(gece+' (19.00 - 07.00)')
+                .split('>x/2026<').join('>'+gunduz+'<')
+                .split('(x.2026)').join('('+gunduz+')');
+            zip.file('xl/sharedStrings.xml', xml);
+            var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE',
+                mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+            var adi='Terminal Operasyon Vardiya Raporu '+gunduz+' (07.00-19.00).xlsx';
+            saveAs(blob, adi);
+            durum.style.color='var(--ok)'; durum.textContent='İndirildi: '+adi;
+        }catch(e){
+            durum.style.color='var(--err)'; durum.textContent='Hata: '+(e.message||e);
+        }finally{
+            btn.disabled=false;
+        }
+    };
+})();
+</script>
+</body>
+</html>
