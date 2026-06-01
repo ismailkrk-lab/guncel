@@ -14,6 +14,9 @@
         --bg-toggle:rgba(255,255,255,0.18); --border-toggle:rgba(255,255,255,0.35); --text-toggle:#ffffff;
         --text-header-sub:#8ab4de; --card-shadow:rgba(26,58,107,0.10); --bg-info:#e8f0fb; --accent:#1a3a6b;
         --ok:#1e7e34; --err:#c0392b; --bg-sel:#f4f8ff; --bg-note:#fff8e6; --border-note:#f0c060; --text-note:#a07a10;
+        --bg-modal:#fff; --overlay:rgba(20,40,90,0.45); --bg-section:#f0f6ff; --border-section:#c8dcf8;
+        --bg-result:#e8f5e9; --border-result:#a5d6a7; --text-result:#1b5e20;
+        --bg-input-focus:#f0f7ff;
     }
     body.dark {
         --bg-page:#0b1625; --bg-header:#0a1628; --bg-card:rgba(255,255,255,0.04); --border-card:rgba(255,255,255,0.08);
@@ -22,6 +25,9 @@
         --bg-toggle:rgba(255,255,255,0.08); --border-toggle:rgba(255,255,255,0.15); --text-toggle:rgba(232,240,251,0.75);
         --text-header-sub:#5b8fc4; --card-shadow:rgba(0,0,0,0.35); --bg-info:rgba(91,155,213,0.10); --accent:#5b9bd5;
         --ok:#4ade80; --err:#f87171; --bg-sel:rgba(91,155,213,0.07); --bg-note:rgba(201,160,30,0.12); --border-note:rgba(201,160,30,0.3); --text-note:rgba(232,210,120,0.75);
+        --bg-modal:#0e1e35; --overlay:rgba(0,0,0,0.65); --bg-section:rgba(91,155,213,0.08); --border-section:rgba(91,155,213,0.2);
+        --bg-result:rgba(74,222,128,0.08); --border-result:rgba(74,222,128,0.25); --text-result:#4ade80;
+        --bg-input-focus:rgba(91,155,213,0.12);
     }
     *,*::before,*::after{ box-sizing:border-box; }
     body{ font-family:'Tahoma',sans-serif; margin:0; min-height:100vh; background:var(--bg-page); color:var(--text-primary); display:flex; flex-direction:column; transition:background .25s,color .25s; }
@@ -55,6 +61,60 @@
     .durum{ font-size:12px; margin-top:12px; min-height:16px; text-align:center; line-height:1.6; }
     .note-box{ margin-top:6px; background:var(--bg-note); border:1px solid var(--border-note); color:var(--text-note); border-radius:10px; padding:16px; font-size:14px; text-align:center; font-weight:bold; }
     .footer{ text-align:center; color:var(--text-label); font-size:11px; padding:16px; }
+
+    /* --- YOLCU VERİSİ BUTONU --- */
+    .yolcu-btn-wrap{ margin-top:10px; margin-bottom:2px; }
+    .yolcu-veri-btn{ width:100%; padding:12px; font-size:14px; font-weight:bold; font-family:'Tahoma',sans-serif; background:var(--bg-section); color:var(--accent); border:2px dashed var(--border-section); border-radius:10px; cursor:pointer; transition:all .18s; display:flex; align-items:center; justify-content:center; gap:8px; }
+    .yolcu-veri-btn:hover{ background:var(--bg-sel); border-style:solid; }
+    .yolcu-veri-btn.dolu{ border-style:solid; border-color:var(--ok); color:var(--ok); background:var(--bg-result); }
+
+    /* --- MODAL --- */
+    .modal-overlay{ position:fixed; inset:0; background:var(--overlay); z-index:1000; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; padding:16px; }
+    .modal-overlay.acik{ opacity:1; pointer-events:all; }
+    .modal{ background:var(--bg-modal); border:1px solid var(--border-card); border-radius:18px; padding:0; max-width:520px; width:100%; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.35); transform:translateY(24px) scale(0.97); transition:transform .22s; }
+    .modal-overlay.acik .modal{ transform:translateY(0) scale(1); }
+    .modal-header{ padding:20px 22px 14px; border-bottom:1px solid var(--border-card); display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:var(--bg-modal); border-radius:18px 18px 0 0; z-index:2; }
+    .modal-baslik{ font-size:16px; font-weight:bold; }
+    .modal-kapat{ background:none; border:none; font-size:20px; cursor:pointer; color:var(--text-secondary); padding:4px 8px; border-radius:6px; }
+    .modal-kapat:hover{ background:var(--bg-section); }
+    .modal-body{ padding:18px 22px 22px; }
+
+    /* Bölüm başlıkları */
+    .bolum{ margin-top:18px; }
+    .bolum:first-child{ margin-top:0; }
+    .bolum-baslik{ font-size:11px; font-weight:bold; color:var(--text-label); letter-spacing:.08em; text-transform:uppercase; margin-bottom:10px; padding:6px 10px; background:var(--bg-section); border-radius:6px; border-left:3px solid var(--accent); }
+
+    /* Satır gridleri */
+    .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .grid-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+    .grid-4{ display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px; }
+
+    /* Input grup */
+    .inp-grup{ display:flex; flex-direction:column; gap:4px; }
+    .inp-grup label{ font-size:11px; font-weight:bold; color:var(--text-label); }
+    .inp-grup input{ padding:9px 10px; font-size:14px; font-family:'Tahoma',sans-serif; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-input); border-radius:8px; outline:none; width:100%; transition:border .15s,background .15s; }
+    .inp-grup input:focus{ border-color:var(--accent); background:var(--bg-input-focus); }
+    .inp-grup input[readonly]{ background:var(--bg-section); color:var(--accent); font-weight:bold; cursor:default; border-style:dashed; }
+    .inp-grup .hesap-tag{ font-size:10px; color:var(--text-label); margin-top:2px; }
+
+    /* Hesaplama sonuç kutusu */
+    .hesap-kutu{ margin-top:16px; background:var(--bg-result); border:1px solid var(--border-result); border-radius:10px; padding:14px 16px; }
+    .hesap-kutu .hk-baslik{ font-size:11px; font-weight:bold; color:var(--text-result); margin-bottom:10px; }
+    .hesap-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    .hesap-item{ text-align:center; }
+    .hesap-item .deger{ font-size:18px; font-weight:bold; color:var(--text-result); }
+    .hesap-item .etiket{ font-size:10px; color:var(--text-secondary); margin-top:2px; line-height:1.3; }
+    .hesap-item .yuzde{ font-size:13px; font-weight:bold; color:var(--accent); margin-top:4px; }
+
+    /* Uygula butonu */
+    .modal-footer{ padding:14px 22px 18px; border-top:1px solid var(--border-card); display:flex; gap:10px; }
+    .btn-uygula{ flex:1; padding:13px; font-size:14px; font-weight:bold; font-family:'Tahoma',sans-serif; background:var(--bg-btn-main); color:var(--text-btn-main); border:none; border-radius:9px; cursor:pointer; transition:opacity .15s; }
+    .btn-uygula:hover{ opacity:.88; }
+    .btn-iptal{ padding:13px 18px; font-size:14px; font-weight:bold; font-family:'Tahoma',sans-serif; background:var(--bg-input); color:var(--text-secondary); border:1px solid var(--border-input); border-radius:9px; cursor:pointer; }
+
+    /* Veri özeti bandı */
+    .veri-ozet{ margin-top:8px; padding:10px 14px; background:var(--bg-result); border:1px solid var(--border-result); border-radius:9px; font-size:12px; color:var(--text-result); line-height:1.7; }
+    .veri-ozet .oz-baslik{ font-weight:bold; margin-bottom:4px; }
 </style>
 </head>
 <body class="light">
@@ -89,8 +149,18 @@
                 <input type="date" id="vr-tarih" oninput="vrOnizle()">
                 <div class="onizleme" id="vr-onizleme"><span class="bos">Tarih seçince tarihler burada görünecek.</span></div>
 
-                <div class="step-label" style="margin-top:18px;">3 · Hangi dosyalar?</div>
+                <!-- YOLCU VERİSİ -->
+                <div class="step-label" style="margin-top:18px;">3 · Yolcu Verileri</div>
+                <div class="yolcu-btn-wrap">
+                    <button class="yolcu-veri-btn" id="yolcu-ac-btn" onclick="modalAc()">
+                        <span>✈️</span> Yolcu Verilerini Gir
+                    </button>
+                </div>
+                <div id="veri-ozet-kutu" style="display:none;"></div>
+
+                <div class="step-label" style="margin-top:18px;">4 · Hangi dosyalar?</div>
                 <div class="secimler">
+                    <label class="chk"><input type="checkbox" id="vr-dashboard-24" onchange="senkron()"><span>PowerPoint — Dashboard (24 Saatlik)<small>Terminal Operasyon Vardiya Raporu [önceki gün].pptx</small></span></label>
                     <label class="chk"><input type="checkbox" id="vr-excel" onchange="senkron()"><span>Excel — Vardiya Raporu<small>Terminal Operasyon Vardiya Raporu .xlsx</small></span></label>
                     <label class="chk"><input type="checkbox" id="vr-ppt" onchange="senkron()"><span>PowerPoint — C Ekibi Faaliyet Özeti<small>C EKİBİ FAALİYET ÖZETİ .pptx</small></span></label>
                     <label class="chk hepsi"><input type="checkbox" id="vr-hepsi" onchange="hepsiTikle()"><span>Hepsi</span></label>
@@ -109,7 +179,146 @@
 
     <div class="footer">Terminal Operasyon · Vardiya Raporlama</div>
 
+    <!-- ===================== MODAL ===================== -->
+    <div class="modal-overlay" id="modal-overlay" onclick="modalDis(event)">
+        <div class="modal" id="modal-panel">
+            <div class="modal-header">
+                <div class="modal-baslik">✈️ Yolcu Verileri Girişi</div>
+                <button class="modal-kapat" onclick="modalKapat()">✕</button>
+            </div>
+            <div class="modal-body">
+
+                <!-- PASAPORT GEÇİŞ -->
+                <div class="bolum">
+                    <div class="bolum-baslik">🛂 Pasaport Geçiş</div>
+                    <div class="grid-2" style="margin-bottom:10px;">
+                        <div class="inp-grup">
+                            <label>Giden Toplam Yolcu</label>
+                            <input type="number" id="b3" placeholder="örn. 55000" oninput="hesapla()">
+                        </div>
+                        <div class="inp-grup">
+                            <label>Türk Giden Yolcu</label>
+                            <input type="number" id="d3" placeholder="örn. 15000" oninput="hesapla()">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="inp-grup">
+                            <label>Gelen Toplam Yolcu</label>
+                            <input type="number" id="b4" placeholder="örn. 52000" oninput="hesapla()">
+                        </div>
+                        <div class="inp-grup">
+                            <label>Türk Gelen Yolcu</label>
+                            <input type="number" id="d4" placeholder="örn. 16000" oninput="hesapla()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- İÇ HAT -->
+                <div class="bolum">
+                    <div class="bolum-baslik">✈️ İç Hat Yolcu Sayıları</div>
+                    <div class="grid-3">
+                        <div class="inp-grup">
+                            <label>Giden Türk Yolcu</label>
+                            <input type="number" id="ic_giden" placeholder="0" oninput="hesapla()">
+                        </div>
+                        <div class="inp-grup">
+                            <label>Gelen Türk Yolcu</label>
+                            <input type="number" id="ic_gelen" placeholder="0" oninput="hesapla()">
+                        </div>
+                        <div class="inp-grup">
+                            <label>Toplam</label>
+                            <input type="number" id="ic_toplam" placeholder="0" oninput="hesapla()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- E-GATE -->
+                <div class="bolum">
+                    <div class="bolum-baslik">🔷 E-Gate (E-Pasaport Kapıları)</div>
+                    <div class="grid-4">
+                        <div class="inp-grup">
+                            <label>Çıkış</label>
+                            <input type="number" id="i3" placeholder="0" oninput="hesapla()">
+                        </div>
+                        <div class="inp-grup">
+                            <label>İç→Dış Transf.</label>
+                            <input type="number" id="i4" placeholder="0" oninput="hesapla()">
+                        </div>
+                        <div class="inp-grup">
+                            <label>Giriş</label>
+                            <input type="number" id="i5" placeholder="0" oninput="hesapla()">
+                        </div>
+                        <div class="inp-grup">
+                            <label>Dış→İç Giriş</label>
+                            <input type="number" id="i6" placeholder="0" oninput="hesapla()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HESAPLAMA SONUÇLARI -->
+                <div id="hesap-sonuc" class="hesap-kutu" style="display:none;">
+                    <div class="hk-baslik">📊 Hesaplanan Değerler</div>
+                    <div class="grid-3" style="margin-bottom:12px;">
+                        <div class="hesap-item">
+                            <div class="deger" id="r-toplam-giden">—</div>
+                            <div class="etiket">Giden Toplam</div>
+                        </div>
+                        <div class="hesap-item">
+                            <div class="deger" id="r-toplam-gelen">—</div>
+                            <div class="etiket">Gelen Toplam</div>
+                        </div>
+                        <div class="hesap-item">
+                            <div class="deger" id="r-toplam-gene">—</div>
+                            <div class="etiket">Genel Toplam</div>
+                        </div>
+                    </div>
+                    <div class="grid-3" style="margin-bottom:12px;">
+                        <div class="hesap-item">
+                            <div class="deger" id="r-yab-giden">—</div>
+                            <div class="etiket">Yabancı Giden</div>
+                        </div>
+                        <div class="hesap-item">
+                            <div class="deger" id="r-yab-gelen">—</div>
+                            <div class="etiket">Yabancı Gelen</div>
+                        </div>
+                        <div class="hesap-item">
+                            <div class="deger" id="r-turk-toplam">—</div>
+                            <div class="etiket">Türk Toplam</div>
+                        </div>
+                    </div>
+                    <div style="border-top:1px solid var(--border-result);padding-top:10px;margin-top:4px;">
+                        <div class="hk-baslik">E-Pasaport Kullanım Oranları</div>
+                        <div class="grid-3">
+                            <div class="hesap-item">
+                                <div class="yuzde" id="r-epas-giden">—</div>
+                                <div class="etiket">Giden Yolcu<br>E-Pasaport %</div>
+                            </div>
+                            <div class="hesap-item">
+                                <div class="yuzde" id="r-epas-gelen">—</div>
+                                <div class="etiket">Gelen Yolcu<br>E-Pasaport %</div>
+                            </div>
+                            <div class="hesap-item">
+                                <div class="yuzde" id="r-epas-toplam">—</div>
+                                <div class="etiket">Toplam<br>E-Pasaport %</div>
+                            </div>
+                        </div>
+                        <div style="text-align:center;margin-top:10px;">
+                            <span style="font-size:12px;color:var(--text-secondary);">E-Gate Toplam: </span>
+                            <span style="font-size:14px;font-weight:bold;color:var(--accent);" id="r-egate-toplam">—</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn-iptal" onclick="modalKapat()">İptal</button>
+                <button class="btn-uygula" id="btn-uygula" onclick="uygula()">✓ Kaydet ve Kapat</button>
+            </div>
+        </div>
+    </div>
+
 <script>
+/* ===== TEMA ===== */
 (function(){
     var saved = localStorage.getItem('vardiyaTema');
     if(saved){ document.body.className = saved; }
@@ -123,105 +332,305 @@
     };
 })();
 
-(function(){
-    function ik(n){ return String(n).padStart(2,'0'); }
-    function parcala(v){ var p=v.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
-    function gunduzStr(dt){ return ik(dt.getDate())+'.'+ik(dt.getMonth()+1)+'.'+dt.getFullYear(); }
-    function geceStr(dt){
-        var e=new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()+1);
-        if(e.getMonth()===dt.getMonth()) return ik(dt.getDate())+'-'+ik(e.getDate())+'.'+ik(dt.getMonth()+1)+'.'+dt.getFullYear();
-        return ik(dt.getDate())+'.'+ik(dt.getMonth()+1)+'-'+ik(e.getDate())+'.'+ik(e.getMonth()+1)+'.'+e.getFullYear();
+/* ===== YARDIMCI FONKSİYONLAR ===== */
+function ik(n){ return String(n).padStart(2,'0'); }
+function parcala(v){ var p=v.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
+function gunduzStr(dt){ return ik(dt.getDate())+'.'+ik(dt.getMonth()+1)+'.'+dt.getFullYear(); }
+function oncekiStr(dt){ var o=new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()-1); return ik(o.getDate())+'.'+ik(o.getMonth()+1)+'.'+o.getFullYear(); }
+function geceStr(dt){
+    var e=new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()+1);
+    if(e.getMonth()===dt.getMonth()) return ik(dt.getDate())+'-'+ik(e.getDate())+'.'+ik(dt.getMonth()+1)+'.'+dt.getFullYear();
+    return ik(dt.getDate())+'.'+ik(dt.getMonth()+1)+'-'+ik(e.getDate())+'.'+ik(e.getMonth()+1)+'.'+e.getFullYear();
+}
+function n(id){ return parseInt(document.getElementById(id).value)||0; }
+function fmt(x){ return x.toLocaleString('tr-TR'); }
+function pct(x){ return x.toFixed(2).replace('.',',')+'%'; }
+
+/* ===== VARDİYA SEÇİMİ ===== */
+window.vardiyaSec = function(v){
+    document.getElementById('btn-gunduz').classList.toggle('aktif', v==='gunduz');
+    document.getElementById('btn-gece').classList.toggle('aktif', v==='gece');
+    document.getElementById('gunduz-panel').style.display = (v==='gunduz') ? 'block' : 'none';
+    document.getElementById('gece-panel').style.display   = (v==='gece')   ? 'block' : 'none';
+};
+
+/* ===== TARİH ÖNİZLEME ===== */
+window.vrOnizle = function(){
+    var v=document.getElementById('vr-tarih').value, el=document.getElementById('vr-onizleme');
+    if(!v){ el.innerHTML='<span class="bos">Tarih seçince tarihler burada görünecek.</span>'; return; }
+    var dt=parcala(v);
+    el.innerHTML='Gündüz: <b>'+gunduzStr(dt)+'</b><br>24 Saatlik Dashboard tarihi: <b>'+oncekiStr(dt)+'</b><br>Gece: <b>'+geceStr(dt)+'</b>';
+};
+
+/* ===== KUTUCUK SENKRON ===== */
+window.senkron = function(){
+    var d24=document.getElementById('vr-dashboard-24').checked,
+        e=document.getElementById('vr-excel').checked,
+        p=document.getElementById('vr-ppt').checked;
+    document.getElementById('vr-hepsi').checked = (d24 && e && p);
+};
+window.hepsiTikle = function(){
+    var h=document.getElementById('vr-hepsi').checked;
+    document.getElementById('vr-dashboard-24').checked = h;
+    document.getElementById('vr-excel').checked = h;
+    document.getElementById('vr-ppt').checked = h;
+};
+
+/* ===== MODAL ===== */
+window.modalAc = function(){
+    document.getElementById('modal-overlay').classList.add('acik');
+};
+window.modalKapat = function(){
+    document.getElementById('modal-overlay').classList.remove('acik');
+};
+window.modalDis = function(e){
+    if(e.target === document.getElementById('modal-overlay')) modalKapat();
+};
+
+/* ===== CANLI HESAPLAMA ===== */
+// Kaydedilen veri nesnesi (başta boş)
+var kayitliVeri = null;
+
+window.hesapla = function(){
+    var b3=n('b3'), d3=n('d3'), b4=n('b4'), d4=n('d4');
+    var i3=n('i3'), i4=n('i4'), i5=n('i5'), i6=n('i6');
+    var herhangi = (b3||d3||b4||d4||i3||i4||i5||i6);
+    if(!herhangi){ document.getElementById('hesap-sonuc').style.display='none'; return; }
+
+    // Formüller (Excel Sheet1(5) ile aynı)
+    var yabGiden = b3 - d3;
+    var yabGelen = b4 - d4;
+    var toplamGiden = b3;          // = B3 (zaten girildi)
+    var toplamGelen = b4;          // = B4
+    var genelToplam = b3 + b4;     // = B5
+    var turkToplam  = d3 + d4;     // = D5
+    var egateTop    = i3+i4+i5+i6; // = I7
+    var toplamCikis = i3+i4;       // = J3
+    var toplamGiris = i5+i6;       // = J5
+
+    // E-Pasaport %
+    var eGiden  = d3 > 0 ? ((i3+i4)*100)/d3 : null;
+    var eGelen  = d4 > 0 ? ((i5+i6)*100)/d4 : null;
+    var eToplam = turkToplam > 0 ? (egateTop*100)/turkToplam : null;
+
+    // Ekrana yaz
+    document.getElementById('r-toplam-giden').textContent = fmt(toplamGiden);
+    document.getElementById('r-toplam-gelen').textContent = fmt(toplamGelen);
+    document.getElementById('r-toplam-gene').textContent  = fmt(genelToplam);
+    document.getElementById('r-yab-giden').textContent    = fmt(yabGiden);
+    document.getElementById('r-yab-gelen').textContent    = fmt(yabGelen);
+    document.getElementById('r-turk-toplam').textContent  = fmt(turkToplam);
+    document.getElementById('r-egate-toplam').textContent = fmt(egateTop);
+    document.getElementById('r-epas-giden').textContent   = eGiden  !== null ? '%'+pct(eGiden)  : '—';
+    document.getElementById('r-epas-gelen').textContent   = eGelen  !== null ? '%'+pct(eGelen)  : '—';
+    document.getElementById('r-epas-toplam').textContent  = eToplam !== null ? '%'+pct(eToplam) : '—';
+
+    document.getElementById('hesap-sonuc').style.display = 'block';
+};
+
+/* ===== KAYDET & KAPAT ===== */
+window.uygula = function(){
+    var b3=n('b3'), d3=n('d3'), b4=n('b4'), d4=n('d4');
+    var i3=n('i3'), i4=n('i4'), i5=n('i5'), i6=n('i6');
+    var ic_g=n('ic_giden'), ic_gel=n('ic_gelen'), ic_top=n('ic_toplam');
+
+    kayitliVeri = {
+        b3:b3, d3:d3, b4:b4, d4:d4,
+        i3:i3, i4:i4, i5:i5, i6:i6,
+        ic_hat_giden: ic_g, ic_hat_gelen: ic_gel, ic_hat_toplam: ic_top,
+        // Hesaplananlar
+        yabGiden: b3-d3,
+        yabGelen: b4-d4,
+        genelToplam: b3+b4,
+        turkToplam: d3+d4,
+        egateTop: i3+i4+i5+i6,
+        eGiden:  d3>0 ? ((i3+i4)*100)/d3 : 0,
+        eGelen:  d4>0 ? ((i5+i6)*100)/d4 : 0,
+        eToplam: (d3+d4)>0 ? ((i3+i4+i5+i6)*100)/(d3+d4) : 0
+    };
+
+    // Butonu güncelle
+    var btn = document.getElementById('yolcu-ac-btn');
+    btn.classList.add('dolu');
+    btn.innerHTML = '<span>✅</span> Yolcu Verisi Girildi — Düzenle';
+
+    // Özet kut
+    var oz = document.getElementById('veri-ozet-kutu');
+    oz.style.display = 'block';
+    oz.innerHTML = '<div class="veri-ozet">' +
+        '<div class="oz-baslik">Girilen Veriler Özeti</div>' +
+        'Pasaport Giden: <b>'+fmt(b3)+'</b> (Türk: '+fmt(d3)+' / Yabancı: '+fmt(b3-d3)+')<br>' +
+        'Pasaport Gelen: <b>'+fmt(b4)+'</b> (Türk: '+fmt(d4)+' / Yabancı: '+fmt(b4-d4)+')<br>' +
+        (ic_top>0 ? 'İç Hat Toplam: <b>'+fmt(ic_top)+'</b><br>' : '') +
+        'E-Gate Toplam: <b>'+fmt(i3+i4+i5+i6)+'</b>' +
+        '</div>';
+
+    modalKapat();
+};
+
+/* ===== EXCEL ÜRET ===== */
+async function excelOlustur(dt){
+    var gunduz=gunduzStr(dt), gece=geceStr(dt), onceki=oncekiStr(dt);
+    var resp=await fetch('sablon.xlsx', {cache:'no-store'});
+    if(!resp.ok) throw new Error('Excel şablonu indirilemedi ('+resp.status+')');
+    var zip=await JSZip.loadAsync(await resp.arrayBuffer());
+    var ss=zip.file('xl/sharedStrings.xml');
+    if(!ss) throw new Error('sharedStrings.xml bulunamadı');
+    var xml=await ss.async('string');
+    xml = xml
+        .split('TARİH (07.00 - 19.00)').join(gunduz+' (07.00 - 19.00)')
+        .split('TARİH (19.00 - 07.00)').join(gece+' (19.00 - 07.00)')
+        .split('>x/2026<').join('>'+gunduz+'<')
+        .split('(x.2026)').join('('+gunduz+')');
+    zip.file('xl/sharedStrings.xml', xml);
+    var s6=zip.file('xl/worksheets/sheet6.xml');
+    if(s6){
+        var x6=await s6.async('string');
+        x6=x6.split('<c r="B4" s="54" t="s"><v>50</v></c>').join('<c r="B4" s="54" t="inlineStr"><is><t>'+onceki+'</t></is></c>');
+        zip.file('xl/worksheets/sheet6.xml', x6);
     }
-    function oncekiStr(dt){ var o=new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()-1); return ik(o.getDate())+'.'+ik(o.getMonth()+1)+'.'+o.getFullYear(); }
+    var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var adi='Terminal Operasyon Vardiya Raporu '+gunduz+' (07.00-19.00).xlsx';
+    saveAs(blob, adi);
+    return adi;
+}
 
-    window.vardiyaSec = function(v){
-        document.getElementById('btn-gunduz').classList.toggle('aktif', v==='gunduz');
-        document.getElementById('btn-gece').classList.toggle('aktif', v==='gece');
-        document.getElementById('gunduz-panel').style.display = (v==='gunduz') ? 'block' : 'none';
-        document.getElementById('gece-panel').style.display   = (v==='gece')   ? 'block' : 'none';
+/* ===== PPT C EKİBİ ÜRET ===== */
+async function pptOlustur(dt){
+    var gunduz=gunduzStr(dt);
+    var resp=await fetch('sablon.pptx', {cache:'no-store'});
+    if(!resp.ok) throw new Error('PowerPoint şablonu indirilemedi ('+resp.status+')');
+    var zip=await JSZip.loadAsync(await resp.arrayBuffer());
+    var s2=zip.file('ppt/slides/slide2.xml');
+    if(s2){ var x2=await s2.async('string'); zip.file('ppt/slides/slide2.xml', x2.split('TARİH').join(gunduz)); }
+    var sm=zip.file('ppt/slideMasters/slideMaster1.xml');
+    if(sm){ var xm=await sm.async('string'); zip.file('ppt/slideMasters/slideMaster1.xml', xm.split('TARİH').join(gunduz)); }
+    var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+    var adi='C EKİBİ FAALİYET ÖZETİ '+gunduz+' (07.00-19.00).pptx';
+    saveAs(blob, adi);
+    return adi;
+}
+
+/* ===== DASHBOARD 24 SAATLİK PPTX ÜRET ===== */
+async function dashboard24Olustur(dt){
+    var onceki = oncekiStr(dt);
+
+    var v = kayitliVeri || {};
+    var b3=v.b3||0, d3=v.d3||0, b4=v.b4||0, d4=v.d4||0;
+    var i3=v.i3||0, i4=v.i4||0, i5=v.i5||0, i6=v.i6||0;
+    var yabGiden=b3-d3, yabGelen=b4-d4;
+    var turkToplam=d3+d4;
+    var eGiden  = d3>0 ? ((i3+i4)*100)/d3 : 0;
+    var eGelen  = d4>0 ? ((i5+i6)*100)/d4 : 0;
+    var eToplam = turkToplam>0 ? ((i3+i4+i5+i6)*100)/turkToplam : 0;
+
+    function fmtN(n){ return Math.round(n).toLocaleString('tr-TR'); }
+    function pctFmt(p){ return '%'+p.toFixed(2).replace('.',','); }
+
+    // Şablon PPTX yükle (orijinal dashboard dosyası: Terminal_Operasyon_Vardiya_Raporu_TARİH.pptx adıyla yerleştirin)
+    var resp=await fetch('sablon_dashboard.pptx', {cache:'no-store'});
+    if(!resp.ok) throw new Error('Dashboard şablonu indirilemedi ('+resp.status+'). "sablon_dashboard.pptx" dosyasını klasöre koyun.');
+    var zip=await JSZip.loadAsync(await resp.arrayBuffer());
+
+    var slideFile = zip.file('ppt/slides/slide1.xml');
+    if(!slideFile) throw new Error('Slayt XML bulunamadı');
+    var xml = await slideFile.async('string');
+
+    // Tarih güncelle
+    xml = xml.replace(/<a:t>TARİ<\/a:t>[\s\S]*?<a:t>H<\/a:t>/, '<a:t>'+onceki+'<\/a:t>');
+    xml = xml.split('<a:t>TARİH <\/a:t>').join('<a:t>'+onceki+' <\/a:t>');
+
+    // Shape ID -> değer eşleştirmesi (XML analizi ile kesinleştirildi)
+    var shapeValues = {
+        // Pasaport GİDEN
+        '99' : fmtN(d3),        // T.C. Vatandaşı - GİDEN
+        '97' : fmtN(yabGiden),  // Yabancı - GİDEN
+        '137': fmtN(b3),        // Toplam - GİDEN
+        // Pasaport GELEN
+        '93' : fmtN(d4),        // T.C. Vatandaşı - GELEN
+        '85' : fmtN(yabGelen),  // Yabancı - GELEN
+        '98' : fmtN(b4),        // Toplam - GELEN
+        // TOPLAM YOLCU büyük oval kutular
+        '79' : fmtN(b3),        // GİDEN TOPLAM büyük
+        '135': fmtN(b4),        // GELEN TOPLAM büyük
+        '115': fmtN(b3),        // TOPLAM YOLCU GİDEN (sağ)
+        '145': fmtN(b4),        // TOPLAM YOLCU GELEN (sağ)
+        // İÇ HAT YOLCU SAYILARI
+        '154': fmtN(v.ic_hat_giden||0),
+        '106': fmtN(v.ic_hat_gelen||0),
+        '153': fmtN(v.ic_hat_toplam||0),
+        // E-PASAPORT GEÇİŞ SAYILARI
+        '161': fmtN(i3),        // Çıkış
+        '155': fmtN(i4),        // İçten-Dışa Transfer
+        '160': fmtN(i5),        // Giriş
+        '163': fmtN(i6),        // Dıştan-İçe Giriş
+        // E-PASAPORT İSTATİSTİKLERİ
+        '173': fmtN(turkToplam), // Pasaporttan Geçen Toplam Türk Yolcu
     };
 
-    window.vrOnizle = function(){
-        var v=document.getElementById('vr-tarih').value, el=document.getElementById('vr-onizleme');
-        if(!v){ el.innerHTML='<span class="bos">Tarih seçince tarihler burada görünecek.</span>'; return; }
-        var dt=parcala(v);
-        el.innerHTML='Gündüz: <b>'+gunduzStr(dt)+'</b><br>Gece: <b>'+geceStr(dt)+'</b><br>E-Pasaport (önceki gün): <b>'+oncekiStr(dt)+'</b>';
-    };
-
-    // Kutucuk senkronizasyonu
-    window.senkron = function(){
-        var e=document.getElementById('vr-excel').checked, p=document.getElementById('vr-ppt').checked;
-        document.getElementById('vr-hepsi').checked = (e && p);
-    };
-    window.hepsiTikle = function(){
-        var h=document.getElementById('vr-hepsi').checked;
-        document.getElementById('vr-excel').checked = h;
-        document.getElementById('vr-ppt').checked = h;
-    };
-
-    // EXCEL üret
-    async function excelOlustur(dt){
-        var gunduz=gunduzStr(dt), gece=geceStr(dt), onceki=oncekiStr(dt);
-        var resp=await fetch('sablon.xlsx', {cache:'no-store'});
-        if(!resp.ok) throw new Error('Excel şablonu indirilemedi ('+resp.status+')');
-        var zip=await JSZip.loadAsync(await resp.arrayBuffer());
-        var ss=zip.file('xl/sharedStrings.xml');
-        if(!ss) throw new Error('sharedStrings.xml bulunamadı');
-        var xml=await ss.async('string');
-        xml = xml
-            .split('TARİH (07.00 - 19.00)').join(gunduz+' (07.00 - 19.00)')
-            .split('TARİH (19.00 - 07.00)').join(gece+' (19.00 - 07.00)')
-            .split('>x/2026<').join('>'+gunduz+'<')
-            .split('(x.2026)').join('('+gunduz+')');
-        zip.file('xl/sharedStrings.xml', xml);
-        var s6=zip.file('xl/worksheets/sheet6.xml');
-        if(s6){
-            var x6=await s6.async('string');
-            x6=x6.split('<c r="B4" s="54" t="s"><v>50</v></c>').join('<c r="B4" s="54" t="inlineStr"><is><t>'+onceki+'</t></is></c>');
-            zip.file('xl/worksheets/sheet6.xml', x6);
-        }
-        var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-        var adi='Terminal Operasyon Vardiya Raporu '+gunduz+' (07.00-19.00).xlsx';
-        saveAs(blob, adi);
-        return adi;
+    // Boş kutulara değer ekle
+    function insertText(xml, shapeId, value) {
+        var rpr = '<a:rPr lang="tr-TR" sz="1100" b="1" dirty="0"><a:solidFill><a:srgbClr val="1E4E79"/></a:solidFill><a:latin typeface="Tahoma" panose="020B0604030504040204" pitchFamily="34" charset="0"/></a:rPr>';
+        var re = new RegExp('(<p:cNvPr id="'+shapeId+'"[\\s\\S]*?<a:bodyPr[^>]*\\/>[\\s]*<a:lstStyle\\/>[\\s]*<a:p>[\\s]*(?:<a:pPr[^>]*\\/>[\\s]*)?)<a:endParaRPr', 's');
+        return xml.replace(re, '$1<a:r>'+rpr+'<a:t>'+value+'</a:t></a:r><a:endParaRPr');
     }
 
-    // POWERPOINT üret
-    async function pptOlustur(dt){
-        var gunduz=gunduzStr(dt);
-        var resp=await fetch('sablon.pptx', {cache:'no-store'});
-        if(!resp.ok) throw new Error('PowerPoint şablonu indirilemedi ('+resp.status+')');
-        var zip=await JSZip.loadAsync(await resp.arrayBuffer());
-        var s2=zip.file('ppt/slides/slide2.xml');
-        if(s2){ var x2=await s2.async('string'); zip.file('ppt/slides/slide2.xml', x2.split('TARİH').join(gunduz)); }
-        var sm=zip.file('ppt/slideMasters/slideMaster1.xml');
-        if(sm){ var xm=await sm.async('string'); zip.file('ppt/slideMasters/slideMaster1.xml', xm.split('TARİH').join(gunduz)); }
-        var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
-        var adi='C EKİBİ FAALİYET ÖZETİ '+gunduz+' (07.00-19.00).pptx';
-        saveAs(blob, adi);
-        return adi;
+    for (var sid in shapeValues) {
+        xml = insertText(xml, sid, shapeValues[sid]);
     }
 
-    window.olustur = async function(){
-        var durum=document.getElementById('vr-durum'), btn=document.getElementById('vr-btn');
-        var v=document.getElementById('vr-tarih').value;
-        if(!v){ durum.style.color='var(--err)'; durum.textContent='Önce bir tarih seç.'; return; }
-        if(typeof JSZip==='undefined'){ durum.style.color='var(--err)'; durum.textContent='JSZip yüklenemedi (internet bağlantısını kontrol et).'; return; }
-        var ex=document.getElementById('vr-excel').checked, pp=document.getElementById('vr-ppt').checked;
-        if(!ex && !pp){ durum.style.color='var(--err)'; durum.textContent='En az bir dosya türü seç (Excel veya PowerPoint).'; return; }
-        var dt=parcala(v), inenler=[];
-        btn.disabled=true; durum.style.color='var(--text-secondary)';
-        try{
-            if(ex){ durum.textContent='Excel hazırlanıyor...'; inenler.push(await excelOlustur(dt)); }
-            if(pp){ durum.textContent='PowerPoint hazırlanıyor...'; inenler.push(await pptOlustur(dt)); }
-            durum.style.color='var(--ok)'; durum.innerHTML='İndirildi:<br>'+inenler.join('<br>');
-        }catch(e){
-            durum.style.color='var(--err)'; durum.textContent='Hata: '+(e.message||e);
-        }finally{
-            btn.disabled=false;
-        }
-    };
-})();
+    // % içeren E-Pasaport oran kutularını güncelle
+    function replacePct(xml, shapeId, value) {
+        var startIdx = xml.search(new RegExp('<p:cNvPr id="'+shapeId+'"'));
+        if (startIdx < 0) return xml;
+        var txStart = xml.indexOf('<p:txBody>', startIdx);
+        var txEnd = xml.indexOf('</p:txBody>', txStart) + 11;
+        var tx = xml.substring(txStart, txEnd).replace('<a:t>%</a:t>', '<a:t>'+value+'</a:t>');
+        return xml.substring(0, txStart) + tx + xml.substring(txEnd);
+    }
+
+    xml = replacePct(xml, '168', pctFmt(eGiden));   // Giden E-Pasaport %
+    xml = replacePct(xml, '170', pctFmt(eGelen));   // Gelen E-Pasaport %
+    xml = replacePct(xml, '175', pctFmt(eToplam));  // Toplam E-Pasaport %
+
+    zip.file('ppt/slides/slide1.xml', xml);
+
+    // SlideMaster'da da tarih güncelle
+    var sm=zip.file('ppt/slideMasters/slideMaster1.xml');
+    if(sm){ var xm=await sm.async('string'); zip.file('ppt/slideMasters/slideMaster1.xml', xm.split('TARİH').join(onceki)); }
+
+    var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+    var adi='Terminal Operasyon Vardiya Raporu '+onceki+'.pptx';
+    saveAs(blob, adi);
+    return adi;
+}
+
+/* ===== OLUŞTUR ===== */
+window.olustur = async function(){
+    var durum=document.getElementById('vr-durum'), btn=document.getElementById('vr-btn');
+    var v=document.getElementById('vr-tarih').value;
+    if(!v){ durum.style.color='var(--err)'; durum.textContent='Önce bir tarih seç.'; return; }
+    if(typeof JSZip==='undefined'){ durum.style.color='var(--err)'; durum.textContent='JSZip yüklenemedi (internet bağlantısını kontrol et).'; return; }
+
+    var d24=document.getElementById('vr-dashboard-24').checked;
+    var ex=document.getElementById('vr-excel').checked;
+    var pp=document.getElementById('vr-ppt').checked;
+    if(!d24 && !ex && !pp){ durum.style.color='var(--err)'; durum.textContent='En az bir dosya türü seç.'; return; }
+    if(d24 && !kayitliVeri){ durum.style.color='var(--err)'; durum.textContent='Dashboard için önce yolcu verilerini gir (3. adım).'; return; }
+
+    var dt=parcala(v), inenler=[];
+    btn.disabled=true; durum.style.color='var(--text-secondary)';
+    try{
+        if(d24){ durum.textContent='Dashboard (24 Saatlik) hazırlanıyor...'; inenler.push(await dashboard24Olustur(dt)); }
+        if(ex) { durum.textContent='Excel hazırlanıyor...';                  inenler.push(await excelOlustur(dt)); }
+        if(pp) { durum.textContent='PowerPoint hazırlanıyor...';             inenler.push(await pptOlustur(dt)); }
+        durum.style.color='var(--ok)'; durum.innerHTML='✅ İndirildi:<br>'+inenler.join('<br>');
+    }catch(e){
+        durum.style.color='var(--err)'; durum.textContent='Hata: '+(e.message||e);
+    }finally{
+        btn.disabled=false;
+    }
+};
 </script>
 </body>
 </html>
