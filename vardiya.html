@@ -540,43 +540,46 @@ async function dashboard24Olustur(dt){
     xml = xml.replace(/<a:t>TARİ<\/a:t>[\s\S]*?<a:t>H<\/a:t>/, '<a:t>'+onceki+'<\/a:t>');
     xml = xml.split('<a:t>TARİH <\/a:t>').join('<a:t>'+onceki+' <\/a:t>');
 
-    // Shape ID -> değer eşleştirmesi (XML + görsel analiz ile kesinleştirildi)
-    var egidTop = i3+i4;        // E-Pasaport GİDEN toplam (Çıkış + İç-Dış)
-    var egelTop = i5+i6;        // E-Pasaport GELEN toplam (Giriş + Dış-İç)
-    var egateTop = i3+i4+i5+i6; // E-Gate genel toplam
+    // Shape ID -> değer eşleştirmesi (14.05.2026 görseli ile doğrulandı)
+    var icHatGiden  = v.ic_hat_giden  || 0;
+    var icHatGelen  = v.ic_hat_gelen  || 0;
+    var icHatToplam = v.ic_hat_toplam || 0;
+
+    var egidTop  = i3+i4;           // E-Pas GİDEN toplam  (Çıkış + İç-Dış)
+    var egelTop  = i5+i6;           // E-Pas GELEN toplam  (Giriş + Dış-İç)
+    var egateTop = i3+i4+i5+i6;     // E-Pas genel toplam
 
     var shapeValues = {
         // --- PASAPORTTAN GEÇEN YOLCU SAYILARI ---
-        // GİDEN kolonu
-        '99' : fmtN(d3),           // T.C. Vatandaşı - GİDEN
-        '97' : fmtN(yabGiden),     // Yabancı - GİDEN
-        '137': fmtN(b3),           // Toplam GİDEN
-        // GELEN kolonu
-        '93' : fmtN(d4),           // T.C. Vatandaşı - GELEN
-        '85' : fmtN(yabGelen),     // Yabancı - GELEN
-        '98' : fmtN(b4),           // Toplam GELEN
-        // TOPLAM YOLCU kolonu (GİDEN + GELEN toplamı)
-        '115': fmtN(b3+b4),        // Pasaport Genel Toplam
-
-        // --- İÇ HAT YOLCU SAYILARI ---
-        // Geç geldiği için tüm İç Hat kutuları boş bırakılıyor:
-        // '79', '135', '145' -> boş (listeye dahil edilmedi)
+        '99' : fmtN(d3),        // T.C. Vatandaşı GİDEN
+        '97' : fmtN(yabGiden),  // Yabancı GİDEN
+        '137': fmtN(b3),        // Toplam GİDEN
+        '93' : fmtN(d4),        // T.C. Vatandaşı GELEN
+        '85' : fmtN(yabGelen),  // Yabancı GELEN
+        '98' : fmtN(b4),        // Toplam GELEN
+        '115': fmtN(b3+b4),     // TOPLAM YOLCU = GİDEN + GELEN
 
         // --- E-PASAPORT YOLCU GEÇİŞ SAYILARI ---
-        // GİDEN kolonu (sol, x=3.2cm)
-        '154': fmtN(i3),           // Giden Katı Yolcu Sayıları (= Çıkış)
-        '106': fmtN(i4),           // İç-Dış Transfer Yolcu Sayıları
-        '153': fmtN(egidTop),      // GİDEN Toplam (Çıkış + İç-Dış)
-        // GELEN kolonu (sağ, x=8.6cm)
-        '161': fmtN(i5),           // Gelen Katı Yolcu Sayıları (= Giriş)
-        '155': fmtN(i6),           // Dış-İç Transfer Yolcu Sayıları
-        '160': fmtN(egelTop),      // GELEN Toplam (Giriş + Dış-İç)
-        // TOPLAM YOLCU kolonu (x=11.6cm)
-        '163': fmtN(egateTop),     // E-Pasaport Genel Toplam
+        // GİDEN kolonu (x≈3.2cm)
+        '154': fmtN(i3),        // Giden Katı Yolcu   = Çıkış (i3)
+        '106': fmtN(i4),        // İç-Dış Transfer    = i4
+        '153': fmtN(egidTop),   // GİDEN Toplam       = i3+i4
+        // GELEN kolonu (x≈8.6cm)
+        '161': fmtN(i5),        // Gelen Katı Yolcu   = Giriş (i5)
+        '155': fmtN(i6),        // Dış-İç Transfer    = i6
+        '160': fmtN(egelTop),   // GELEN Toplam       = i5+i6
+        // TOPLAM kolonu (x≈11.6cm)
+        '163': fmtN(egateTop),  // E-Pas Genel Toplam = i3+i4+i5+i6
 
         // --- E-PASAPORT İSTATİSTİKLERİ ---
-        '173': fmtN(turkToplam),   // Pasaporttan Geçen Toplam Türk Yolcu
+        '173': fmtN(turkToplam), // Pasaporttan Geçen Toplam Türk Yolcu
     };
+
+    // --- İÇ HAT YOLCU SAYILARI (değer girilmişse doldur, girilmemişse boş bırak) ---
+    // ID=79  -> GİDEN YOLCU, ID=135 -> GELEN YOLCU, ID=145 -> TOPLAM YOLCU
+    if (icHatGiden  > 0) shapeValues['79']  = fmtN(icHatGiden);
+    if (icHatGelen  > 0) shapeValues['135'] = fmtN(icHatGelen);
+    if (icHatToplam > 0) shapeValues['145'] = fmtN(icHatToplam);
 
     // Boş kutulara değer ekle
     function insertText(xml, shapeId, value) {
