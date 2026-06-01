@@ -173,7 +173,18 @@
 
             <!-- GECE -->
             <div id="gece-panel" style="display:none;">
-                <div class="note-box">🌙 Gece kuralları henüz eklenmedi.</div>
+                <label class="fld" for="gr-tarih">2 · Rapor Tarihi <span style="font-weight:normal;color:var(--text-secondary)">(vardiyaya başlangıç günü)</span></label>
+                <input type="date" id="gr-tarih" oninput="grOnizle()">
+                <div class="onizleme" id="gr-onizleme"><span class="bos">Tarih seçince tarihler burada görünecek.</span></div>
+
+                <div class="step-label" style="margin-top:18px;">3 · Hangi dosyalar?</div>
+                <div class="secimler">
+                    <label class="chk"><input type="checkbox" id="gr-ppt" onchange="grSenkron()"><span>PowerPoint — C Ekibi Faaliyet Özeti<small>C EKİBİ FAALİYET ÖZETİ [tarih] (19.00-07.00).pptx</small></span></label>
+                    <label class="chk hepsi"><input type="checkbox" id="gr-hepsi" onchange="grHepsiTikle()"><span>Hepsi</span></label>
+                </div>
+
+                <button class="btn-main" id="gr-btn" onclick="grOlustur()">Oluştur ve İndir</button>
+                <div class="durum" id="gr-durum"></div>
             </div>
         </div>
     </div>
@@ -702,6 +713,62 @@ async function dashboardVardiyaOlustur(dt){
     saveAs(blob, adi);
     return adi;
 }
+
+/* ===== GECE — TARİH ÖNİZLEME ===== */
+window.grOnizle = function(){
+    var v=document.getElementById('gr-tarih').value, el=document.getElementById('gr-onizleme');
+    if(!v){ el.innerHTML='<span class="bos">Tarih seçince tarihler burada görünecek.</span>'; return; }
+    var dt=parcala(v);
+    el.innerHTML=
+        '🌙 C Ekibi PPT → <b>'+geceStr(dt)+' (19.00-07.00)</b>';
+};
+
+/* ===== GECE — KUTUCUK SENKRON ===== */
+window.grSenkron = function(){
+    var p=document.getElementById('gr-ppt').checked;
+    document.getElementById('gr-hepsi').checked = p;
+};
+window.grHepsiTikle = function(){
+    var h=document.getElementById('gr-hepsi').checked;
+    document.getElementById('gr-ppt').checked = h;
+};
+
+/* ===== GECE — C EKİBİ PPT ÜRET ===== */
+async function gecePptOlustur(dt){
+    var gece=geceStr(dt);
+    var baslikTarih = gece + ' (19.00-07.00)';
+    var resp=await fetch('sablon.pptx', {cache:'no-store'});
+    if(!resp.ok) throw new Error('PowerPoint şablonu indirilemedi ('+resp.status+')');
+    var zip=await JSZip.loadAsync(await resp.arrayBuffer());
+    var s2=zip.file('ppt/slides/slide2.xml');
+    if(s2){ var x2=await s2.async('string'); zip.file('ppt/slides/slide2.xml', x2.split('TARİH').join(baslikTarih)); }
+    var sm=zip.file('ppt/slideMasters/slideMaster1.xml');
+    if(sm){ var xm=await sm.async('string'); zip.file('ppt/slideMasters/slideMaster1.xml', xm.split('TARİH').join(baslikTarih)); }
+    var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+    var adi='C EKİBİ FAALİYET ÖZETİ '+gece+' (19.00-07.00).pptx';
+    saveAs(blob, adi);
+    return adi;
+}
+
+/* ===== GECE — OLUŞTUR ===== */
+window.grOlustur = async function(){
+    var durum=document.getElementById('gr-durum'), btn=document.getElementById('gr-btn');
+    var v=document.getElementById('gr-tarih').value;
+    if(!v){ durum.style.color='var(--err)'; durum.textContent='Önce bir tarih seç.'; return; }
+    if(typeof JSZip==='undefined'){ durum.style.color='var(--err)'; durum.textContent='JSZip yüklenemedi (internet bağlantısını kontrol et).'; return; }
+    var pp=document.getElementById('gr-ppt').checked;
+    if(!pp){ durum.style.color='var(--err)'; durum.textContent='En az bir dosya türü seç.'; return; }
+    var dt=parcala(v), inenler=[];
+    btn.disabled=true; durum.style.color='var(--text-secondary)';
+    try{
+        if(pp){ durum.textContent='C Ekibi PowerPoint hazırlanıyor...'; inenler.push(await gecePptOlustur(dt)); }
+        durum.style.color='var(--ok)'; durum.innerHTML='✅ İndirildi:<br>'+inenler.join('<br>');
+    }catch(e){
+        durum.style.color='var(--err)'; durum.textContent='Hata: '+(e.message||e);
+    }finally{
+        btn.disabled=false;
+    }
+};
 
 /* ===== OLUŞTUR ===== */
 window.olustur = async function(){
