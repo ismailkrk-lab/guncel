@@ -720,7 +720,7 @@ window.grOnizle = function(){
     if(!v){ el.innerHTML='<span class="bos">Tarih seçince tarihler burada görünecek.</span>'; return; }
     var dt=parcala(v);
     el.innerHTML=
-        '🌙 C Ekibi PPT → <b>'+geceStr(dt)+' (19.00-07.00)</b>';
+        '🌙 C Ekibi PPT → <b>'+geceStr(dt)+'</b>';
 };
 
 /* ===== GECE — KUTUCUK SENKRON ===== */
@@ -736,14 +736,13 @@ window.grHepsiTikle = function(){
 /* ===== GECE — C EKİBİ PPT ÜRET ===== */
 async function gecePptOlustur(dt){
     var gece=geceStr(dt);
-    var baslikTarih = gece + ' (19.00-07.00)';
     var resp=await fetch('sablon.pptx', {cache:'no-store'});
     if(!resp.ok) throw new Error('PowerPoint şablonu indirilemedi ('+resp.status+')');
     var zip=await JSZip.loadAsync(await resp.arrayBuffer());
     var s2=zip.file('ppt/slides/slide2.xml');
-    if(s2){ var x2=await s2.async('string'); zip.file('ppt/slides/slide2.xml', x2.split('TARİH').join(baslikTarih)); }
+    if(s2){ var x2=await s2.async('string'); zip.file('ppt/slides/slide2.xml', x2.split('TARİH').join(gece)); }
     var sm=zip.file('ppt/slideMasters/slideMaster1.xml');
-    if(sm){ var xm=await sm.async('string'); zip.file('ppt/slideMasters/slideMaster1.xml', xm.split('TARİH').join(baslikTarih)); }
+    if(sm){ var xm=await sm.async('string'); zip.file('ppt/slideMasters/slideMaster1.xml', xm.split('TARİH').join(gece)); }
     var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
     var adi='C EKİBİ FAALİYET ÖZETİ '+gece+' (19.00-07.00).pptx';
     saveAs(blob, adi);
