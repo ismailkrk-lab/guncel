@@ -161,6 +161,7 @@
                 <div class="step-label" style="margin-top:18px;">4 · Hangi dosyalar?</div>
                 <div class="secimler">
                     <label class="chk"><input type="checkbox" id="vr-dashboard-24" onchange="senkron()"><span>PowerPoint — Dashboard (24 Saatlik)<small>Terminal Operasyon Vardiya Raporu [önceki gün].pptx</small></span></label>
+                    <label class="chk"><input type="checkbox" id="vr-dashboard-vardiya" onchange="senkron()"><span>PowerPoint — Dashboard (Vardiya 07.00-19.00)<small>Terminal Operasyon Vardiya Raporu [tarih] (07.00-19.00).pptx</small></span></label>
                     <label class="chk"><input type="checkbox" id="vr-excel" onchange="senkron()"><span>Excel — Vardiya Raporu<small>Terminal Operasyon Vardiya Raporu .xlsx</small></span></label>
                     <label class="chk"><input type="checkbox" id="vr-ppt" onchange="senkron()"><span>PowerPoint — C Ekibi Faaliyet Özeti<small>C EKİBİ FAALİYET ÖZETİ .pptx</small></span></label>
                     <label class="chk hepsi"><input type="checkbox" id="vr-hepsi" onchange="hepsiTikle()"><span>Hepsi</span></label>
@@ -359,21 +360,26 @@ window.vrOnizle = function(){
     var v=document.getElementById('vr-tarih').value, el=document.getElementById('vr-onizleme');
     if(!v){ el.innerHTML='<span class="bos">Tarih seçince tarihler burada görünecek.</span>'; return; }
     var dt=parcala(v);
-    el.innerHTML='Gündüz: <b>'+gunduzStr(dt)+'</b><br>24 Saatlik Dashboard tarihi: <b>'+oncekiStr(dt)+'</b><br>Gece: <b>'+geceStr(dt)+'</b>';
+    el.innerHTML=
+        '📋 Dashboard <b>24 Saatlik</b> → <b>'+oncekiStr(dt)+'</b><br>'+
+        '☀️ Dashboard <b>Vardiya</b> → <b>'+gunduzStr(dt)+' 07.00-19.00</b><br>'+
+        '🌙 Gece → <b>'+geceStr(dt)+'</b>';
 };
 
 /* ===== KUTUCUK SENKRON ===== */
 window.senkron = function(){
     var d24=document.getElementById('vr-dashboard-24').checked,
-        e=document.getElementById('vr-excel').checked,
-        p=document.getElementById('vr-ppt').checked;
-    document.getElementById('vr-hepsi').checked = (d24 && e && p);
+        dv =document.getElementById('vr-dashboard-vardiya').checked,
+        e  =document.getElementById('vr-excel').checked,
+        p  =document.getElementById('vr-ppt').checked;
+    document.getElementById('vr-hepsi').checked = (d24 && dv && e && p);
 };
 window.hepsiTikle = function(){
     var h=document.getElementById('vr-hepsi').checked;
-    document.getElementById('vr-dashboard-24').checked = h;
-    document.getElementById('vr-excel').checked = h;
-    document.getElementById('vr-ppt').checked = h;
+    document.getElementById('vr-dashboard-24').checked        = h;
+    document.getElementById('vr-dashboard-vardiya').checked   = h;
+    document.getElementById('vr-excel').checked               = h;
+    document.getElementById('vr-ppt').checked                 = h;
 };
 
 /* ===== MODAL ===== */
@@ -619,6 +625,84 @@ async function dashboard24Olustur(dt){
     return adi;
 }
 
+/* ===== DASHBOARD VARDİYA PPTX ÜRET (07.00-19.00) ===== */
+async function dashboardVardiyaOlustur(dt){
+    var gunduz = gunduzStr(dt);   // Girilen tarihin kendisi (24 saatlik gibi değil)
+    var baslikTarih = gunduz + ' 07.00 - 19.00';
+
+    var v = kayitliVeri || {};
+    var b3=v.b3||0, d3=v.d3||0, b4=v.b4||0, d4=v.d4||0;
+    var i3=v.i3||0, i4=v.i4||0, i5=v.i5||0, i6=v.i6||0;
+    var yabGiden=b3-d3, yabGelen=b4-d4;
+    var turkToplam=d3+d4;
+    var eGiden  = d3>0 ? ((i3+i4)*100)/d3 : 0;
+    var eGelen  = d4>0 ? ((i5+i6)*100)/d4 : 0;
+    var eToplam = turkToplam>0 ? ((i3+i4+i5+i6)*100)/turkToplam : 0;
+
+    function fmtN(n){ return Math.round(n).toLocaleString('tr-TR'); }
+    function pctFmt(p){ return '%'+p.toFixed(2).replace('.',','); }
+
+    var resp=await fetch('sablon_dashboard.pptx', {cache:'no-store'});
+    if(!resp.ok) throw new Error('Dashboard şablonu indirilemedi ('+resp.status+'). "sablon_dashboard.pptx" dosyasını klasöre koyun.');
+    var zip=await JSZip.loadAsync(await resp.arrayBuffer());
+
+    var slideFile = zip.file('ppt/slides/slide1.xml');
+    if(!slideFile) throw new Error('Slayt XML bulunamadı');
+    var xml = await slideFile.async('string');
+
+    // Başlıkta tarih + saat aralığı: "14.05.2026 07.00 - 19.00"
+    xml = xml.replace(/<a:t>TARİ<\/a:t>[\s\S]*?<a:t>H<\/a:t>/, '<a:t>'+baslikTarih+'<\/a:t>');
+    xml = xml.split('<a:t>TARİH <\/a:t>').join('<a:t>'+baslikTarih+' <\/a:t>');
+
+    // Alt satır "Yolcu sayıları TARİH tarihine ait..."
+    xml = xml.split('<a:t>'+gunduz+' <\/a:t>').join('<a:t>'+gunduz+' <\/a:t>'); // zaten işlenmiş
+
+    var icHatGiden=v.ic_hat_giden||0, icHatGelen=v.ic_hat_gelen||0, icHatToplam=v.ic_hat_toplam||0;
+    var egidTop=i3+i4, egelTop=i5+i6, egateTop=i3+i4+i5+i6;
+
+    var shapeValues = {
+        '99':fmtN(d3),'97':fmtN(yabGiden),'137':fmtN(b3),
+        '93':fmtN(d4),'85':fmtN(yabGelen),'98':fmtN(b4),
+        '115':fmtN(b3+b4),
+        '154':fmtN(i3),'106':fmtN(i4),'153':fmtN(egidTop),
+        '161':fmtN(i5),'155':fmtN(i6),'160':fmtN(egelTop),
+        '163':fmtN(egateTop),
+        '173':fmtN(turkToplam),
+    };
+    if(icHatGiden  > 0) shapeValues['79']  = fmtN(icHatGiden);
+    if(icHatGelen  > 0) shapeValues['135'] = fmtN(icHatGelen);
+    if(icHatToplam > 0) shapeValues['145'] = fmtN(icHatToplam);
+
+    var rpr='<a:rPr lang="tr-TR" sz="1100" b="0" dirty="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:latin typeface="Tahoma" panose="020B0604030504040204" pitchFamily="34" charset="0"/></a:rPr>';
+
+    function insertText(xml, shapeId, value) {
+        var re = new RegExp('(<p:cNvPr id="'+shapeId+'"[\\s\\S]*?<a:bodyPr[^>]*\\/>[\\s]*<a:lstStyle\\/>[\\s]*<a:p>[\\s]*(?:<a:pPr[^>]*\\/>[\\s]*)?)<a:endParaRPr', 's');
+        return xml.replace(re, '$1<a:r>'+rpr+'<a:t>'+value+'</a:t></a:r><a:endParaRPr');
+    }
+    function replacePct(xml, shapeId, value) {
+        var startIdx = xml.search(new RegExp('<p:cNvPr id="'+shapeId+'"'));
+        if(startIdx < 0) return xml;
+        var txStart = xml.indexOf('<p:txBody>', startIdx);
+        var txEnd = xml.indexOf('</p:txBody>', txStart) + 11;
+        var tx = xml.substring(txStart, txEnd).replace(/<a:r>[\s\S]*?<a:t>%<\/a:t><\/a:r>/, '<a:r>'+rpr+'<a:t>'+value+'<\/a:t><\/a:r>');
+        return xml.substring(0, txStart) + tx + xml.substring(txEnd);
+    }
+
+    for(var sid in shapeValues) xml = insertText(xml, sid, shapeValues[sid]);
+    xml = replacePct(xml, '168', pctFmt(eGiden));
+    xml = replacePct(xml, '170', pctFmt(eGelen));
+    xml = replacePct(xml, '175', pctFmt(eToplam));
+
+    zip.file('ppt/slides/slide1.xml', xml);
+    var sm=zip.file('ppt/slideMasters/slideMaster1.xml');
+    if(sm){ var xm=await sm.async('string'); zip.file('ppt/slideMasters/slideMaster1.xml', xm.split('TARİH').join(baslikTarih)); }
+
+    var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+    var adi='Terminal Operasyon Vardiya Raporu '+gunduz+' (07.00-19.00).pptx';
+    saveAs(blob, adi);
+    return adi;
+}
+
 /* ===== OLUŞTUR ===== */
 window.olustur = async function(){
     var durum=document.getElementById('vr-durum'), btn=document.getElementById('vr-btn');
@@ -627,17 +711,24 @@ window.olustur = async function(){
     if(typeof JSZip==='undefined'){ durum.style.color='var(--err)'; durum.textContent='JSZip yüklenemedi (internet bağlantısını kontrol et).'; return; }
 
     var d24=document.getElementById('vr-dashboard-24').checked;
-    var ex=document.getElementById('vr-excel').checked;
-    var pp=document.getElementById('vr-ppt').checked;
-    if(!d24 && !ex && !pp){ durum.style.color='var(--err)'; durum.textContent='En az bir dosya türü seç.'; return; }
-    if(d24 && !kayitliVeri){ durum.style.color='var(--err)'; durum.textContent='Dashboard için önce yolcu verilerini gir (3. adım).'; return; }
+    var dv =document.getElementById('vr-dashboard-vardiya').checked;
+    var ex =document.getElementById('vr-excel').checked;
+    var pp =document.getElementById('vr-ppt').checked;
+    if(!d24 && !dv && !ex && !pp){ durum.style.color='var(--err)'; durum.textContent='En az bir dosya türü seç.'; return; }
+
+    // Yolcu verisi girilmemişse uyar ama devam et
+    if((d24||dv) && !kayitliVeri){
+        var devam = confirm('⚠️ Yolcu verisi girilmedi.\n\nDashboard sayısal alanlar boş oluşturulacak. Yine de devam edilsin mi?');
+        if(!devam){ durum.style.color='var(--text-secondary)'; durum.textContent='İptal edildi.'; return; }
+    }
 
     var dt=parcala(v), inenler=[];
     btn.disabled=true; durum.style.color='var(--text-secondary)';
     try{
-        if(d24){ durum.textContent='Dashboard (24 Saatlik) hazırlanıyor...'; inenler.push(await dashboard24Olustur(dt)); }
-        if(ex) { durum.textContent='Excel hazırlanıyor...';                  inenler.push(await excelOlustur(dt)); }
-        if(pp) { durum.textContent='PowerPoint hazırlanıyor...';             inenler.push(await pptOlustur(dt)); }
+        if(d24){ durum.textContent='Dashboard (24 Saatlik) hazırlanıyor...';  inenler.push(await dashboard24Olustur(dt)); }
+        if(dv) { durum.textContent='Dashboard (Vardiya) hazırlanıyor...';     inenler.push(await dashboardVardiyaOlustur(dt)); }
+        if(ex) { durum.textContent='Excel hazırlanıyor...';                    inenler.push(await excelOlustur(dt)); }
+        if(pp) { durum.textContent='PowerPoint hazırlanıyor...';               inenler.push(await pptOlustur(dt)); }
         durum.style.color='var(--ok)'; durum.innerHTML='✅ İndirildi:<br>'+inenler.join('<br>');
     }catch(e){
         durum.style.color='var(--err)'; durum.textContent='Hata: '+(e.message||e);
