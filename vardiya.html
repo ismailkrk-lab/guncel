@@ -540,37 +540,47 @@ async function dashboard24Olustur(dt){
     xml = xml.replace(/<a:t>TARİ<\/a:t>[\s\S]*?<a:t>H<\/a:t>/, '<a:t>'+onceki+'<\/a:t>');
     xml = xml.split('<a:t>TARİH <\/a:t>').join('<a:t>'+onceki+' <\/a:t>');
 
-    // Shape ID -> değer eşleştirmesi (XML analizi ile kesinleştirildi)
+    // Shape ID -> değer eşleştirmesi (XML + görsel analiz ile kesinleştirildi)
+    var egidTop = i3+i4;        // E-Pasaport GİDEN toplam (Çıkış + İç-Dış)
+    var egelTop = i5+i6;        // E-Pasaport GELEN toplam (Giriş + Dış-İç)
+    var egateTop = i3+i4+i5+i6; // E-Gate genel toplam
+
     var shapeValues = {
-        // Pasaport GİDEN
-        '99' : fmtN(d3),        // T.C. Vatandaşı - GİDEN
-        '97' : fmtN(yabGiden),  // Yabancı - GİDEN
-        '137': fmtN(b3),        // Toplam - GİDEN
-        // Pasaport GELEN
-        '93' : fmtN(d4),        // T.C. Vatandaşı - GELEN
-        '85' : fmtN(yabGelen),  // Yabancı - GELEN
-        '98' : fmtN(b4),        // Toplam - GELEN
-        // TOPLAM YOLCU büyük oval kutular
-        '79' : fmtN(b3),        // GİDEN TOPLAM büyük
-        '135': fmtN(b4),        // GELEN TOPLAM büyük
-        '115': fmtN(b3),        // TOPLAM YOLCU GİDEN (sağ)
-        '145': fmtN(b4),        // TOPLAM YOLCU GELEN (sağ)
-        // İÇ HAT YOLCU SAYILARI
-        '154': fmtN(v.ic_hat_giden||0),
-        '106': fmtN(v.ic_hat_gelen||0),
-        '153': fmtN(v.ic_hat_toplam||0),
-        // E-PASAPORT GEÇİŞ SAYILARI
-        '161': fmtN(i3),        // Çıkış
-        '155': fmtN(i4),        // İçten-Dışa Transfer
-        '160': fmtN(i5),        // Giriş
-        '163': fmtN(i6),        // Dıştan-İçe Giriş
-        // E-PASAPORT İSTATİSTİKLERİ
-        '173': fmtN(turkToplam), // Pasaporttan Geçen Toplam Türk Yolcu
+        // --- PASAPORTTAN GEÇEN YOLCU SAYILARI ---
+        // GİDEN kolonu
+        '99' : fmtN(d3),           // T.C. Vatandaşı - GİDEN
+        '97' : fmtN(yabGiden),     // Yabancı - GİDEN
+        '137': fmtN(b3),           // Toplam GİDEN
+        // GELEN kolonu
+        '93' : fmtN(d4),           // T.C. Vatandaşı - GELEN
+        '85' : fmtN(yabGelen),     // Yabancı - GELEN
+        '98' : fmtN(b4),           // Toplam GELEN
+        // TOPLAM YOLCU kolonu (GİDEN + GELEN toplamı)
+        '115': fmtN(b3+b4),        // Pasaport Genel Toplam
+
+        // --- İÇ HAT YOLCU SAYILARI ---
+        // Geç geldiği için tüm İç Hat kutuları boş bırakılıyor:
+        // '79', '135', '145' -> boş (listeye dahil edilmedi)
+
+        // --- E-PASAPORT YOLCU GEÇİŞ SAYILARI ---
+        // GİDEN kolonu (sol, x=3.2cm)
+        '154': fmtN(i3),           // Giden Katı Yolcu Sayıları (= Çıkış)
+        '106': fmtN(i4),           // İç-Dış Transfer Yolcu Sayıları
+        '153': fmtN(egidTop),      // GİDEN Toplam (Çıkış + İç-Dış)
+        // GELEN kolonu (sağ, x=8.6cm)
+        '161': fmtN(i5),           // Gelen Katı Yolcu Sayıları (= Giriş)
+        '155': fmtN(i6),           // Dış-İç Transfer Yolcu Sayıları
+        '160': fmtN(egelTop),      // GELEN Toplam (Giriş + Dış-İç)
+        // TOPLAM YOLCU kolonu (x=11.6cm)
+        '163': fmtN(egateTop),     // E-Pasaport Genel Toplam
+
+        // --- E-PASAPORT İSTATİSTİKLERİ ---
+        '173': fmtN(turkToplam),   // Pasaporttan Geçen Toplam Türk Yolcu
     };
 
     // Boş kutulara değer ekle
     function insertText(xml, shapeId, value) {
-        var rpr = '<a:rPr lang="tr-TR" sz="1100" b="1" dirty="0"><a:solidFill><a:srgbClr val="1E4E79"/></a:solidFill><a:latin typeface="Tahoma" panose="020B0604030504040204" pitchFamily="34" charset="0"/></a:rPr>';
+        var rpr = '<a:rPr lang="tr-TR" sz="1100" b="0" dirty="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:latin typeface="Tahoma" panose="020B0604030504040204" pitchFamily="34" charset="0"/></a:rPr>';
         var re = new RegExp('(<p:cNvPr id="'+shapeId+'"[\\s\\S]*?<a:bodyPr[^>]*\\/>[\\s]*<a:lstStyle\\/>[\\s]*<a:p>[\\s]*(?:<a:pPr[^>]*\\/>[\\s]*)?)<a:endParaRPr', 's');
         return xml.replace(re, '$1<a:r>'+rpr+'<a:t>'+value+'</a:t></a:r><a:endParaRPr');
     }
@@ -585,7 +595,8 @@ async function dashboard24Olustur(dt){
         if (startIdx < 0) return xml;
         var txStart = xml.indexOf('<p:txBody>', startIdx);
         var txEnd = xml.indexOf('</p:txBody>', txStart) + 11;
-        var tx = xml.substring(txStart, txEnd).replace('<a:t>%</a:t>', '<a:t>'+value+'</a:t>');
+        var rpr2 = '<a:rPr lang="tr-TR" sz="1100" b="0" dirty="0"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:latin typeface="Tahoma" panose="020B0604030504040204" pitchFamily="34" charset="0"/></a:rPr>';
+        var tx = xml.substring(txStart, txEnd).replace(/<a:r>[\s\S]*?<a:t>%<\/a:t><\/a:r>/, '<a:r>'+rpr2+'<a:t>'+value+'<\/a:t><\/a:r>');
         return xml.substring(0, txStart) + tx + xml.substring(txEnd);
     }
 
