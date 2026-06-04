@@ -1001,6 +1001,8 @@ window.aksiyonOlustur = async function(){
         if(!resp.ok) throw new Error('Şablon indirilemedi ('+resp.status+'). "TARİH_Terminal_Geneli_Alınan_Aksiyonlar.pptx" dosyasını siteyle aynı klasöre koy.');
         var zip=await JSZip.loadAsync(await resp.arrayBuffer());
         durum.textContent='Slaytlar hazırlanıyor...';
+        // $ karakterli konu adları replace'i bozmasın diye fonksiyon-replace
+        function sbt(str){ return function(){ return str; }; }
 
         /* --- SLAYT 1 --- */
         var s1=await zip.file('ppt/slides/slide1.xml').async('string');
@@ -1009,7 +1011,7 @@ window.aksiyonOlustur = async function(){
             konParas+='<a:p><a:r><a:rPr lang="tr-TR" sz="4800" dirty="0"/><a:t>'+akXml(akUpper(t))+'</a:t></a:r></a:p>';
         });
         konParas+='<a:p><a:r><a:rPr lang="tr-TR" sz="4800" dirty="0"/><a:t>KONTROLLERİ</a:t></a:r><a:endParaRPr lang="tr-TR" sz="6600" dirty="0"/></a:p>';
-        s1=s1.replace(/<a:p>\s*<a:r>\s*<a:rPr lang="tr-TR" sz="4800" dirty="0"\/>\s*<a:t>konular<\/a:t>\s*<\/a:r>\s*<a:endParaRPr[^>]*\/>\s*<\/a:p>/, konParas);
+        s1=s1.replace(/<a:p>\s*<a:r>\s*<a:rPr lang="tr-TR" sz="4800" dirty="0"\/>\s*<a:t>konular<\/a:t>\s*<\/a:r>\s*<a:endParaRPr[^>]*\/>\s*<\/a:p>/, sbt(konParas));
         s1=s1.split('TARİH C Ekibi Gece Faaliyetleri').join(akXml(geceTarih)+' '+ekip+' Ekibi Gece Faaliyetleri');
         zip.file('ppt/slides/slide1.xml', s1);
 
@@ -1028,21 +1030,30 @@ window.aksiyonOlustur = async function(){
         var bullets=konular.map(function(k,i){ return bp(k, i===N-1); }).join('');
         var bulletRe=/<a:p>\s*<a:pPr marL="342900"[\s\S]*?iş kaydı açılmıştır\.<\/a:t><\/a:r><\/a:p>/;
         if(!bulletRe.test(s2)) throw new Error('Slayt 2 bullet bloğu bulunamadı (şablon değişmiş olabilir).');
-        s2=s2.replace(bulletRe, bullets);
+        s2=s2.replace(bulletRe, sbt(bullets));
         zip.file('ppt/slides/slide2.xml', s2);
 
         /* --- SLAYT 3+ : konu başına sayfa --- */
         var base=await zip.file('ppt/slides/slide3.xml').async('string');
-        zip.file('ppt/slides/slide3.xml', base.replace('<a:t>KONU</a:t>','<a:t>'+akXml(akUpper(konular[0]))+'</a:t>'));
+        // konu1 -> mevcut slide3 (orijinal rels/tags/notes korunur, sadece KONU değişir)
+        zip.file('ppt/slides/slide3.xml', base.replace('<a:t>KONU</a:t>', sbt('<a:t>'+akXml(akUpper(konular[0]))+'</a:t>')));
+
+        // konu2..N -> TEMİZ yeni slaytlar: paylaşılan tag yok, benzersiz creationId, yalnız layout rels
+        function akTemizSlayt(konu, idx){
+            var x=base.replace('<a:t>KONU</a:t>', sbt('<a:t>'+akXml(akUpper(konu))+'</a:t>'));
+            x=x.replace('<p:custDataLst><p:tags r:id="rId1"/></p:custDataLst>', '');
+            x=x.replace(/<p14:creationId xmlns:p14="[^"]*" val="\d+"\/>/,
+                sbt('<p14:creationId xmlns:p14="http://schemas.microsoft.com/office/powerpoint/2010/main" val="'+(900000000+idx*1000003)+'"/>'));
+            return x;
+        }
 
         var yeniRels='', yeniSldId='', yeniCtype='', rid=14, sid=800;
         for(var i=1;i<N;i++){
             var no=i+3;  // konu2 -> slide4
-            zip.file('ppt/slides/slide'+no+'.xml', base.replace('<a:t>KONU</a:t>','<a:t>'+akXml(akUpper(konular[i]))+'</a:t>'));
+            zip.file('ppt/slides/slide'+no+'.xml', akTemizSlayt(konular[i], i));
             zip.file('ppt/slides/_rels/slide'+no+'.xml.rels',
-                '<?xml version="1.0" encoding="utf-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
-                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag7.xml"/>'+
-                '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout3.xml"/>'+
+                '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout3.xml"/>'+
                 '</Relationships>');
             var r='rId'+(rid++);
             yeniRels+='<Relationship Id="'+r+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide'+no+'.xml"/>';
