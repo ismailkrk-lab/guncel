@@ -119,8 +119,18 @@
     /* --- SEKMELER --- */
     .tabwrap{ width:100%; max-width:480px; display:flex; flex-direction:column; }
     .tabbar{ display:flex; gap:8px; margin-bottom:16px; }
-    .tabbtn{ flex:1; padding:13px 10px; font-size:13px; font-weight:bold; font-family:'Tahoma',sans-serif; border-radius:11px; border:1px solid var(--border-card); background:var(--bg-card); color:var(--text-secondary); cursor:pointer; transition:all .15s; }
+    .tabbtn{ flex:1; padding:12px 6px; font-size:12px; font-weight:bold; font-family:'Tahoma',sans-serif; border-radius:11px; border:1px solid var(--border-card); background:var(--bg-card); color:var(--text-secondary); cursor:pointer; transition:all .15s; line-height:1.25; }
     .tabbtn.aktif{ background:var(--bg-btn-main); color:var(--text-btn-main); border-color:var(--bg-btn-main); }
+
+    /* --- AKSİYON: konu satırları --- */
+    .ak-row{ display:flex; gap:7px; margin-bottom:7px; align-items:center; }
+    .ak-row .num{ flex:0 0 auto; width:24px; text-align:center; color:var(--text-label); font-size:12px; font-weight:bold; user-select:none; }
+    .ak-row input{ flex:1; padding:10px 11px; font-size:14px; font-family:'Tahoma',sans-serif; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-input); border-radius:8px; outline:none; min-width:0; }
+    .ak-row input:focus{ border-color:var(--accent); background:var(--bg-input-focus); }
+    .ak-row .sil{ flex:0 0 auto; width:32px; height:34px; border:none; border-radius:8px; background:var(--bg-section); color:var(--err); font-size:15px; cursor:pointer; }
+    .ak-row .sil:hover{ background:var(--bg-note); }
+    .ak-add{ width:100%; margin-top:4px; padding:10px; font-size:13px; font-weight:bold; font-family:'Tahoma',sans-serif; background:var(--bg-section); color:var(--accent); border:2px dashed var(--border-section); border-radius:9px; cursor:pointer; }
+    .ak-add:hover{ background:var(--bg-sel); border-style:solid; }
 
     /* --- DEVİR: isim-kod satırları --- */
     .dv-add{ width:100%; margin-top:4px; padding:10px; font-size:13px; font-weight:bold; font-family:'Tahoma',sans-serif; background:var(--bg-section); color:var(--accent); border:2px dashed var(--border-section); border-radius:9px; cursor:pointer; }
@@ -163,6 +173,7 @@
             <div class="tabbar">
                 <button class="tabbtn aktif" id="tab-btn-rapor" onclick="tabSec('rapor')">📊 Günlük Rapor</button>
                 <button class="tabbtn" id="tab-btn-devir" onclick="tabSec('devir')">📋 Devir Teslim</button>
+                <button class="tabbtn" id="tab-btn-aksiyon" onclick="tabSec('aksiyon')">📑 Alınan Aksiyonlar</button>
             </div>
             <div class="card" id="card-rapor">
             <h1>Günlük Rapor</h1>
@@ -260,6 +271,33 @@
                     <div class="durum" id="dv-durum"></div>
                 </div>
             </div><!-- /card-devir -->
+
+            <!-- ===================== ALINAN AKSİYONLAR SEKMESİ ===================== -->
+            <div class="card" id="card-aksiyon" style="display:none;">
+                <h1>Terminal Geneli Alınan Aksiyonlar</h1>
+                <p class="desc">Gece vardiyasında kontrol edilecek konuları gir; araç şablonu otomatik doldurur: kapak konu listesi, yönetici özeti cümlesi + bulletlar ve her konu için ayrı bir checklist sayfası açar. Uygunsuzluk adetleri (<b>y</b>) ve sayfa içeriklerini sen sonradan dolduracaksın.</p>
+
+                <div class="step-label">1 · Ekip</div>
+                <div class="ekip-toggle">
+                    <button class="ekip-btn" id="ak-ekip-A" onclick="akEkip('A')">A</button>
+                    <button class="ekip-btn" id="ak-ekip-B" onclick="akEkip('B')">B</button>
+                    <button class="ekip-btn aktif" id="ak-ekip-C" onclick="akEkip('C')">C</button>
+                    <button class="ekip-btn" id="ak-ekip-D" onclick="akEkip('D')">D</button>
+                </div>
+
+                <label class="fld" for="ak-tarih">2 · Tarih <span style="font-weight:normal;color:var(--text-secondary)">(vardiyaya başlangıç günü)</span></label>
+                <input type="date" id="ak-tarih" oninput="akOnizle()">
+                <div class="onizleme" id="ak-onizleme"><span class="bos">Tarih seçince başlık tarihi burada görünecek.</span></div>
+
+                <div class="step-label" style="margin-top:18px;">3 · Konular <span style="font-weight:normal;color:var(--text-secondary)">(normal yazımıyla, örn. Terminal girişleri)</span></div>
+                <div id="ak-konular"></div>
+                <button class="ak-add" onclick="akKonuEkle('')">+ Konu Ekle</button>
+
+                <div class="onizleme" id="ak-ozet" style="margin-top:14px;"></div>
+
+                <button class="btn-main" id="ak-btn" onclick="aksiyonOlustur()">Oluştur ve İndir</button>
+                <div class="durum" id="ak-durum"></div>
+            </div><!-- /card-aksiyon -->
         </div><!-- /tabwrap -->
     </div>
 
@@ -875,14 +913,184 @@ window.grOlustur = async function(){
 };
 
 /* ============================================================
+   ALINAN AKSİYONLAR SEKMESİ
+   ============================================================ */
+var akEkipSecili = 'C';
+window.akEkip = function(e){
+    akEkipSecili = e;
+    ['A','B','C','D'].forEach(function(x){ document.getElementById('ak-ekip-'+x).classList.toggle('aktif', x===e); });
+};
+
+/* Türkçe büyük/küçük + cümle yardımcıları */
+function akUpper(s){ return s.replace(/i/g,'İ').replace(/ı/g,'I').toLocaleUpperCase('tr-TR'); }
+function akLower(s){ return s.replace(/I/g,'ı').replace(/İ/g,'i').toLocaleLowerCase('tr-TR'); }
+function akIlkBuyuk(s){ return s ? akUpper(s.charAt(0))+s.slice(1) : s; }
+function akIlkKucuk(s){
+    if(!s) return s;
+    var ilk=s.split(' ')[0];
+    if(ilk.length>1 && ilk===akUpper(ilk)) return s;   // kısaltma (TGS, FLB...)
+    return akLower(s.charAt(0))+s.slice(1);
+}
+function akIlkBuyukAkilli(s){
+    if(!s) return s;
+    var ilk=s.split(' ')[0];
+    if(ilk.length>1 && ilk===akUpper(ilk)) return s;   // kısaltma
+    return akUpper(s.charAt(0))+s.slice(1);
+}
+function akXml(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+function akKonularCumle(k){
+    var a=k.map(function(t,i){ return i===0 ? akIlkBuyuk(t) : akIlkKucuk(t); });
+    if(a.length===1) return a[0];
+    if(a.length===2) return a[0]+' ve '+a[1];
+    return a.slice(0,-1).join(', ')+' ve '+a[a.length-1];
+}
+
+/* Konu satırları */
+function akNumarala(){
+    var rows=document.querySelectorAll('#ak-konular .ak-row');
+    rows.forEach(function(r,i){ r.querySelector('.num').textContent=(i+1); });
+}
+window.akKonuEkle = function(val){
+    var wrap=document.getElementById('ak-konular');
+    var row=document.createElement('div'); row.className='ak-row';
+    row.innerHTML='<span class="num"></span>'+
+        '<input type="text" placeholder="Konu (örn. Terminal girişleri)" value="'+(val?akXml(val):'')+'">'+
+        '<button class="sil" title="Sil">✕</button>';
+    var inp=row.querySelector('input');
+    inp.addEventListener('keydown', function(ev){
+        if(ev.key==='Enter'){ ev.preventDefault(); akKonuEkle(''); var rows=document.querySelectorAll('#ak-konular .ak-row input'); rows[rows.length-1].focus(); }
+    });
+    inp.addEventListener('input', akOzetle);
+    row.querySelector('.sil').addEventListener('click', function(){ row.remove(); akNumarala(); akOzetle(); });
+    wrap.appendChild(row); akNumarala(); akOzetle();
+    return inp;
+};
+function akTopla(){
+    var out=[];
+    document.querySelectorAll('#ak-konular .ak-row input').forEach(function(i){ var v=i.value.trim(); if(v) out.push(v); });
+    return out;
+}
+window.akOnizle = function(){
+    var v=document.getElementById('ak-tarih').value, el=document.getElementById('ak-onizleme');
+    if(!v){ el.innerHTML='<span class="bos">Tarih seçince başlık tarihi burada görünecek.</span>'; return; }
+    el.innerHTML='📑 Başlık tarihi → <b>'+geceStr(parcala(v))+'</b>';
+};
+window.akOzetle = function(){
+    var k=akTopla(), el=document.getElementById('ak-ozet');
+    if(k.length===0){ el.innerHTML='<span class="bos">Konuları yazınca özet burada görünecek.</span>'; return; }
+    el.innerHTML='Toplam <b>'+k.length+'</b> konu → 1 kapak + 1 yönetici özeti + <b>'+k.length+'</b> konu sayfası ('+(k.length+2)+' slayt).';
+};
+
+/* PPTX üretimi — şablon: TARİH_Terminal_Geneli_Alınan_Aksiyonlar.pptx */
+window.aksiyonOlustur = async function(){
+    var durum=document.getElementById('ak-durum'), btn=document.getElementById('ak-btn');
+    var v=document.getElementById('ak-tarih').value;
+    if(!v){ durum.style.color='var(--err)'; durum.textContent='Önce bir tarih seç.'; return; }
+    if(typeof JSZip==='undefined'){ durum.style.color='var(--err)'; durum.textContent='JSZip yüklenemedi (internet bağlantısını kontrol et).'; return; }
+    var konular=akTopla();
+    if(konular.length===0){ durum.style.color='var(--err)'; durum.textContent='En az bir konu gir.'; return; }
+
+    var geceTarih=geceStr(parcala(v));
+    var ekip=akEkipSecili, N=konular.length;
+
+    btn.disabled=true; durum.style.color='var(--text-secondary)'; durum.textContent='Şablon indiriliyor...';
+    try{
+        var resp=await fetch('TARİH_Terminal_Geneli_Alınan_Aksiyonlar.pptx', {cache:'no-store'});
+        if(!resp.ok) throw new Error('Şablon indirilemedi ('+resp.status+'). "TARİH_Terminal_Geneli_Alınan_Aksiyonlar.pptx" dosyasını siteyle aynı klasöre koy.');
+        var zip=await JSZip.loadAsync(await resp.arrayBuffer());
+        durum.textContent='Slaytlar hazırlanıyor...';
+
+        /* --- SLAYT 1 --- */
+        var s1=await zip.file('ppt/slides/slide1.xml').async('string');
+        var konParas='';
+        konular.forEach(function(t){
+            konParas+='<a:p><a:r><a:rPr lang="tr-TR" sz="4800" dirty="0"/><a:t>'+akXml(akUpper(t))+'</a:t></a:r></a:p>';
+        });
+        konParas+='<a:p><a:r><a:rPr lang="tr-TR" sz="4800" dirty="0"/><a:t>KONTROLLERİ</a:t></a:r><a:endParaRPr lang="tr-TR" sz="6600" dirty="0"/></a:p>';
+        s1=s1.replace(/<a:p>\s*<a:r>\s*<a:rPr lang="tr-TR" sz="4800" dirty="0"\/>\s*<a:t>konular<\/a:t>\s*<\/a:r>\s*<a:endParaRPr[^>]*\/>\s*<\/a:p>/, konParas);
+        s1=s1.split('TARİH C Ekibi Gece Faaliyetleri').join(akXml(geceTarih)+' '+ekip+' Ekibi Gece Faaliyetleri');
+        zip.file('ppt/slides/slide1.xml', s1);
+
+        /* --- SLAYT 2 --- */
+        var s2=await zip.file('ppt/slides/slide2.xml').async('string');
+        s2=s2.split('X.2026 Gece Vardiyamızda,').join(akXml(geceTarih)+' Gece Vardiyamızda,');
+        s2=s2.split('[KONULAR]').join(akXml(akKonularCumle(konular)));
+        var ea='<a:ea typeface="Tahoma" panose="020B0604030504040204" pitchFamily="34" charset="0"/><a:cs typeface="Tahoma" panose="020B0604030504040204" pitchFamily="34" charset="0"/>';
+        function bp(konu, son){
+            var bit=son?' adet uygunsuzluk tespit edilmiş ve iş kaydı açılmıştır.':' adet,';
+            return '<a:p><a:pPr marL="342900" indent="-342900"><a:buFont typeface="Arial" panose="020B0604020202020204" pitchFamily="34" charset="0"/><a:buChar char="•"/></a:pPr>'+
+                '<a:r><a:rPr lang="tr-TR" sz="3200" dirty="0"/><a:t>'+akXml(akIlkBuyukAkilli(konu))+' kontrollerinde </a:t></a:r>'+
+                '<a:r><a:rPr lang="tr-TR" sz="3200" b="1" dirty="0">'+ea+'</a:rPr><a:t>y</a:t></a:r>'+
+                '<a:r><a:rPr lang="tr-TR" sz="3200" dirty="0">'+ea+'</a:rPr><a:t>'+bit+'</a:t></a:r></a:p>';
+        }
+        var bullets=konular.map(function(k,i){ return bp(k, i===N-1); }).join('');
+        var bulletRe=/<a:p>\s*<a:pPr marL="342900"[\s\S]*?iş kaydı açılmıştır\.<\/a:t><\/a:r><\/a:p>/;
+        if(!bulletRe.test(s2)) throw new Error('Slayt 2 bullet bloğu bulunamadı (şablon değişmiş olabilir).');
+        s2=s2.replace(bulletRe, bullets);
+        zip.file('ppt/slides/slide2.xml', s2);
+
+        /* --- SLAYT 3+ : konu başına sayfa --- */
+        var base=await zip.file('ppt/slides/slide3.xml').async('string');
+        zip.file('ppt/slides/slide3.xml', base.replace('<a:t>KONU</a:t>','<a:t>'+akXml(akUpper(konular[0]))+'</a:t>'));
+
+        var yeniRels='', yeniSldId='', yeniCtype='', rid=14, sid=800;
+        for(var i=1;i<N;i++){
+            var no=i+3;  // konu2 -> slide4
+            zip.file('ppt/slides/slide'+no+'.xml', base.replace('<a:t>KONU</a:t>','<a:t>'+akXml(akUpper(konular[i]))+'</a:t>'));
+            zip.file('ppt/slides/_rels/slide'+no+'.xml.rels',
+                '<?xml version="1.0" encoding="utf-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+                '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/tags" Target="../tags/tag7.xml"/>'+
+                '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout3.xml"/>'+
+                '</Relationships>');
+            var r='rId'+(rid++);
+            yeniRels+='<Relationship Id="'+r+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide'+no+'.xml"/>';
+            yeniSldId+='<p:sldId id="'+(sid++)+'" r:id="'+r+'"/>';
+            yeniCtype+='<Override PartName="/ppt/slides/slide'+no+'.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>';
+        }
+        if(N>1){
+            var pr=await zip.file('ppt/_rels/presentation.xml.rels').async('string');
+            zip.file('ppt/_rels/presentation.xml.rels', pr.replace('</Relationships>', yeniRels+'</Relationships>'));
+            var pp=await zip.file('ppt/presentation.xml').async('string');
+            zip.file('ppt/presentation.xml', pp.replace('</p:sldIdLst>', yeniSldId+'</p:sldIdLst>'));
+            var ct=await zip.file('[Content_Types].xml').async('string');
+            zip.file('[Content_Types].xml', ct.replace('</Types>', yeniCtype+'</Types>'));
+        }
+        var appF=zip.file('docProps/app.xml');
+        if(appF){ var ax=await appF.async('string'); zip.file('docProps/app.xml', ax.replace(/<Slides>\d+<\/Slides>/,'<Slides>'+(N+2)+'</Slides>')); }
+
+        var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+        var adi=geceTarih+' Terminal Geneli Alınan Aksiyonlar.pptx';
+        saveAs(blob, adi);
+        durum.style.color='var(--ok)'; durum.innerHTML='✅ İndirildi: '+akXml(adi)+'<br>'+N+' konu · '+(N+2)+' slayt. (Adetleri ve sayfa içeriklerini doldurmayı unutma.)';
+    }catch(e){ durum.style.color='var(--err)'; durum.textContent='Hata: '+(e.message||e); }
+    finally{ btn.disabled=false; }
+};
+
+/* Aksiyon sekmesi başlangıcı: 3 boş satır + bugün */
+(function(){
+    function akBaslat(){
+        if(!document.getElementById('ak-konular')) return;
+        if(document.querySelectorAll('#ak-konular .ak-row').length===0){ akKonuEkle(''); akKonuEkle(''); akKonuEkle(''); }
+        var t=new Date(), di=document.getElementById('ak-tarih');
+        if(di && !di.value){ di.value=t.getFullYear()+'-'+ik(t.getMonth()+1)+'-'+ik(t.getDate()); akOnizle(); }
+        akOzetle();
+    }
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', akBaslat);
+    else akBaslat();
+})();
+
+/* ============================================================
    DEVİR TESLİM SEKMESİ
    ============================================================ */
 window.tabSec = function(which){
-    var rapor = (which==='rapor');
-    document.getElementById('card-rapor').style.display = rapor?'block':'none';
-    document.getElementById('card-devir').style.display = rapor?'none':'block';
-    document.getElementById('tab-btn-rapor').classList.toggle('aktif', rapor);
-    document.getElementById('tab-btn-devir').classList.toggle('aktif', !rapor);
+    var cards = { rapor:'card-rapor', devir:'card-devir', aksiyon:'card-aksiyon' };
+    var btns  = { rapor:'tab-btn-rapor', devir:'tab-btn-devir', aksiyon:'tab-btn-aksiyon' };
+    for(var k in cards){
+        document.getElementById(cards[k]).style.display = (k===which) ? 'block' : 'none';
+        document.getElementById(btns[k]).classList.toggle('aktif', k===which);
+    }
 };
 
 var dvShiftSecili = 'GÜNDÜZ';
