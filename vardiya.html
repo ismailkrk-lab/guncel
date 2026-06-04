@@ -138,6 +138,9 @@
     .dv-row .sil:hover{ background:var(--bg-note); }
     .dv-row-head{ display:flex; gap:7px; margin-bottom:6px; font-size:10px; font-weight:bold; color:var(--text-label); text-transform:uppercase; letter-spacing:.05em; }
     .dv-row-head .h-grip{ flex:0 0 24px; } .dv-row-head .h-ad{ flex:5; } .dv-row-head .h-kod{ flex:2; text-align:center; } .dv-row-head .h-sil{ flex:0 0 32px; }
+    .ekip-toggle{ display:flex; gap:6px; }
+    .ekip-btn{ flex:1; padding:9px; font-size:13px; font-weight:bold; font-family:'Tahoma',sans-serif; border:1px solid var(--border-card); background:var(--bg-card); color:var(--text-secondary); border-radius:8px; cursor:pointer; }
+    .ekip-btn.aktif{ background:var(--bg-btn-main); color:var(--text-btn-main); border-color:var(--bg-btn-main); }
 </style>
 </head>
 <body class="light">
@@ -233,6 +236,14 @@
                     <div class="shift-toggle">
                         <button class="shift-btn aktif" id="dv-btn-gunduz" onclick="dvShift('GÜNDÜZ')">☀️ Gündüz</button>
                         <button class="shift-btn" id="dv-btn-gece" onclick="dvShift('GECE')">🌙 Gece</button>
+                    </div>
+
+                    <label class="fld">Ekip</label>
+                    <div class="ekip-toggle">
+                        <button class="ekip-btn" id="dv-ekip-A" onclick="dvEkip('A')">A</button>
+                        <button class="ekip-btn" id="dv-ekip-B" onclick="dvEkip('B')">B</button>
+                        <button class="ekip-btn aktif" id="dv-ekip-C" onclick="dvEkip('C')">C</button>
+                        <button class="ekip-btn" id="dv-ekip-D" onclick="dvEkip('D')">D</button>
                     </div>
 
                     <label class="fld" for="dv-tarih">3 · Tarih</label>
@@ -881,6 +892,12 @@ window.dvShift = function(s){
     document.getElementById('dv-btn-gece').classList.toggle('aktif', s==='GECE');
     dvOzetle();
 };
+var dvEkipSecili = 'C';
+window.dvEkip = function(e){
+    dvEkipSecili = e;
+    ['A','B','C','D'].forEach(function(x){ document.getElementById('dv-ekip-'+x).classList.toggle('aktif', x===e); });
+    dvOzetle();
+};
 
 var dvState = null;
 var XMLNS_SP = 'http://www.w3.org/XML/1998/namespace';
@@ -946,6 +963,62 @@ function dvSetText(sheet, ref, text, styleFallback){
     t.setAttributeNS(XMLNS_SP,'xml:space','preserve'); t.textContent=String(text);
     is.appendChild(t); c.appendChild(is);
 }
+// Telsiz kodu: sadece rakamsa SAYI olarak yaz (yeşil "metin olarak sayı" uyarısı çıkmaz), değilse metin, boşsa temizle
+function dvSetKod(sheet, ref, kod, styleFallback){
+    var c=dvHucreBul(sheet, ref, styleFallback), ns=sheet.ns;
+    while(c.firstChild) c.removeChild(c.firstChild);
+    kod=(kod==null?'':String(kod)).trim();
+    if(kod===''){ c.removeAttribute('t'); return; }            // boş hücre
+    if(/^\d+$/.test(kod)){                                       // saf sayı -> numeric
+        c.removeAttribute('t');
+        var v=sheet.doc.createElementNS(ns,'v'); v.textContent=kod; c.appendChild(v);
+    } else {                                                     // metin
+        c.setAttribute('t','inlineStr');
+        var is=sheet.doc.createElementNS(ns,'is'), t=sheet.doc.createElementNS(ns,'t');
+        t.setAttributeNS(XMLNS_SP,'xml:space','preserve'); t.textContent=kod; is.appendChild(t); c.appendChild(is);
+    }
+}
+// Hücrenin metnini taşıyan elemanı bul: paylaşımlı string (si) / inline (is). Biçimi (run'ları) korumak için.
+function dvMetinEleman(sheet, ref){
+    var c=sheet.cells[ref]; if(!c) return null;
+    var t=c.getAttribute('t'), ns=sheet.ns;
+    if(t==='s'){
+        var v=c.getElementsByTagNameNS(ns,'v')[0]; if(!v||!dvState.sharedDoc) return null;
+        var idx=parseInt(v.textContent,10);
+        var sis=dvState.sharedDoc.getElementsByTagNameNS(dvState.sharedNs,'si');
+        if(idx>=0 && idx<sis.length){ dvState.sharedMod=true; return {el:sis[idx], ns:dvState.sharedNs}; }
+        return null;
+    }
+    if(t==='inlineStr'){ var is=c.getElementsByTagNameNS(ns,'is')[0]; return is?{el:is, ns:ns}:null; }
+    return null;
+}
+// "(N Adet)" — sayıyı değiştir, biçimi koru
+function dvSayiParantezKoru(sheet, ref, N){
+    var m=dvMetinEleman(sheet, ref); if(!m) return;
+    var ts=m.el.getElementsByTagNameNS(m.ns,'t');
+    for(var i=0;i<ts.length;i++){
+        if(/\(\s*\d+\s*Adet/i.test(ts[i].textContent)){
+            ts[i].textContent=ts[i].textContent.replace(/(\()\s*\d+(\s*Adet)/i, '$1'+N+'$2'); return;
+        }
+    }
+}
+// "N adet Terminal memuru" — sayı ayrı (kalın) run'da olabilir; sadece sayıyı değiştir, biçimi koru
+function dvSayiMemuruKoru(sheet, ref, N){
+    var m=dvMetinEleman(sheet, ref); if(!m) return;
+    var ts=m.el.getElementsByTagNameNS(m.ns,'t');
+    // 1) tek parçada "N adet Terminal memuru" geçiyorsa
+    for(var i=0;i<ts.length;i++){
+        if(/\d+\s*adet\s+Terminal\s+memuru/i.test(ts[i].textContent)){
+            ts[i].textContent=ts[i].textContent.replace(/\d+(\s*adet\s+Terminal\s+memuru)/i, N+'$1'); return;
+        }
+    }
+    // 2) sayı bir parçada, "...Terminal memuru" bir sonraki parçada
+    for(var k=0;k<ts.length-1;k++){
+        if(/\d/.test(ts[k].textContent) && /Terminal\s+memuru/i.test(ts[k+1].textContent)){
+            ts[k].textContent=ts[k].textContent.replace(/\d+/, N); return;
+        }
+    }
+}
 
 window.devirYukle = async function(ev){
     var f=ev.target.files[0], yd=document.getElementById('dv-yukdurum'); if(!f) return;
@@ -960,10 +1033,10 @@ window.devirYukle = async function(ev){
         var takip=await dvSheetByName(zip,wbDoc,ns,rNs,relDoc,'TELSİZ TAKİP');
         var devir=await dvSheetByName(zip,wbDoc,ns,rNs,relDoc,'DEVİR TESLİM ARAÇ MALZEME');
         if(!takip) throw new Error("'TELSİZ TAKİP' sayfası bulunamadı. Doğru devir dosyası mı?");
-        var shared=[], ssf=zip.file('xl/sharedStrings.xml');
-        if(ssf){ var sd=new DOMParser().parseFromString(await ssf.async('string'),'application/xml');
-            var sis=sd.getElementsByTagNameNS(ns,'si'); for(var i=0;i<sis.length;i++){ var ts=sis[i].getElementsByTagNameNS(ns,'t'); var s=''; for(var j=0;j<ts.length;j++)s+=ts[j].textContent; shared.push(s);} }
-        dvState={zip:zip, wbDoc:wbDoc, takip:takip, devir:devir, shared:shared, fileName:f.name};
+        var shared=[], sharedDoc=null, ssf=zip.file('xl/sharedStrings.xml');
+        if(ssf){ sharedDoc=new DOMParser().parseFromString(await ssf.async('string'),'application/xml');
+            var sis=sharedDoc.getElementsByTagNameNS(ns,'si'); for(var i=0;i<sis.length;i++){ var ts=sis[i].getElementsByTagNameNS(ns,'t'); var s=''; for(var j=0;j<ts.length;j++)s+=ts[j].textContent; shared.push(s);} }
+        dvState={zip:zip, wbDoc:wbDoc, takip:takip, devir:devir, shared:shared, sharedDoc:sharedDoc, sharedNs:ns, fileName:f.name};
         dvIndex(takip); if(devir) dvIndex(devir);
 
         // Yapı tespiti: isim başlık satırı + dosyada mevcut isim bloğunun sonu (artık satırları temizlemek için)
@@ -996,29 +1069,28 @@ window.dvIsimEkle = function(ad, kod, toplu){
     kodInp.addEventListener('input', dvOzetle);
     kodInp.addEventListener('keydown', dvKodNav);   // Tab / Enter -> alttaki kod kutusu
     row.querySelector('.ad').addEventListener('input', dvOzetle);
-    // sürükle-bırak (tutamaçtan) — fare ve dokunma için Pointer Events
+    // sürükle-bırak (tutamaçtan) — fare ve dokunma; olaylar document'e bağlı (güvenilir)
     var grip=row.querySelector('.grip');
     grip.addEventListener('pointerdown', function(e){
         e.preventDefault();
         var box=document.getElementById('dv-isimler');
         row.classList.add('dragging');
-        try{ grip.setPointerCapture(e.pointerId); }catch(_){}
         function move(ev){
+            if(ev.cancelable) ev.preventDefault();
             var after=dvAfterEl(box, ev.clientY);
             if(after==null){ box.appendChild(row); }
             else if(after!==row){ box.insertBefore(row, after); }
         }
         function up(){
-            grip.removeEventListener('pointermove', move);
-            grip.removeEventListener('pointerup', up);
-            grip.removeEventListener('pointercancel', up);
+            document.removeEventListener('pointermove', move);
+            document.removeEventListener('pointerup', up);
+            document.removeEventListener('pointercancel', up);
             row.classList.remove('dragging');
-            try{ grip.releasePointerCapture(e.pointerId); }catch(_){}
             dvOzetle();
         }
-        grip.addEventListener('pointermove', move);
-        grip.addEventListener('pointerup', up);
-        grip.addEventListener('pointercancel', up);
+        document.addEventListener('pointermove', move, {passive:false});
+        document.addEventListener('pointerup', up);
+        document.addEventListener('pointercancel', up);
     });
     box.appendChild(row);
     if(!toplu) dvOzetle();
@@ -1082,6 +1154,8 @@ function dvBaslikGuncelle(sheet, ref, tarih, shift){
         txt = txt.split('TARİH').join(tarih).split('TARIH').join(tarih);
         txt = txt.replace(/\((?:GÜNDÜZ|GECE)\)/g, '('+shift+')');
     }
+    // Ekip harfi (A/B/C/D EKİBİ) -> seçilen ekip
+    txt = txt.replace(/([A-D])(\s*EK[İI]B[İI])/i, dvEkipSecili+'$2');
     dvSetText(sheet, ref, txt, stil);
 }
 function dvSayiParantez(txt, N){ return txt.replace(/\(\s*\d+(\s*Adet\s*\))/i, '('+N+'$1'); }
@@ -1132,18 +1206,20 @@ window.devirOlustur = async function(){
         var bas=dvState.isimBasSatir;
         var adStil=dvStilBul(T,'A',[bas,bas+1,bas+2]);
         var kodStil=dvStilBul(T,'B',[bas,bas+1,bas+2]); if(kodStil==null) kodStil=adStil;
-        for(var i=0;i<liste.length;i++){ var r=bas+i; dvSetText(T,'A'+r,liste[i].ad,adStil); dvSetText(T,'B'+r,liste[i].kod,kodStil); }
-        for(var r2=bas+liste.length; r2<=dvState.orijinalSonSatir; r2++){ dvSetText(T,'A'+r2,'',adStil); dvSetText(T,'B'+r2,'',kodStil); }
+        for(var i=0;i<liste.length;i++){ var r=bas+i; dvSetText(T,'A'+r,liste[i].ad,adStil); dvSetKod(T,'B'+r,liste[i].kod,kodStil); }
+        for(var r2=bas+liste.length; r2<=dvState.orijinalSonSatir; r2++){ dvSetText(T,'A'+r2,'',adStil); dvSetKod(T,'B'+r2,'',kodStil); }
 
         dvSetText(T,'B5',kodListe, dvStilBul(T,'B',[5,6,7]));
 
-        var a5=dvCellText(T,'A5'); if(a5!=null) dvSetText(T,'A5',dvSayiParantez(a5,N), T.cells['A5']?T.cells['A5'].getAttribute('s'):null);
-        var a10=dvCellText(T,'A10'); if(a10!=null) dvSetText(T,'A10',dvSayiMemuru(a10,N), T.cells['A10']?T.cells['A10'].getAttribute('s'):null);
-        if(dvState.devir){ var c3=dvCellText(dvState.devir,'C3'); if(c3!=null) dvSetText(dvState.devir,'C3',dvSayiMemuru(c3,N), dvState.devir.cells['C3']?dvState.devir.cells['C3'].getAttribute('s'):null); }
+        // Sayıları biçimi (kalın/kırmızı/run) bozmadan güncelle
+        dvSayiParantezKoru(T,'A5',N);
+        dvSayiMemuruKoru(T,'A10',N);
+        if(dvState.devir) dvSayiMemuruKoru(dvState.devir,'C3',N);
 
         var ser=new XMLSerializer();
         dvState.zip.file(T.entry, ser.serializeToString(T.doc));
         if(dvState.devir) dvState.zip.file(dvState.devir.entry, ser.serializeToString(dvState.devir.doc));
+        if(dvState.sharedDoc) dvState.zip.file('xl/sharedStrings.xml', ser.serializeToString(dvState.sharedDoc));
         var blob=await dvState.zip.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
         var adi=dvDosyaAdi(dvState.fileName,tarih);
         saveAs(blob, adi);
