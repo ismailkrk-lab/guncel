@@ -885,7 +885,7 @@ async function gecePptOlustur(dt){
     var s2=zip.file('ppt/slides/slide2.xml');
     if(s2){ var x2=await s2.async('string'); zip.file('ppt/slides/slide2.xml', x2.split('TARİH').join(gece)); }
     var sm=zip.file('ppt/slideMasters/slideMaster1.xml');
-    if(sm){ var xm=await sm.async('string'); zip.file('ppt/slideMasters/slideMaster1.xml', xm.split('TARİH').join(gece)); }
+    if(sm){ var xm=await sm.async('string'); zip.file('ppt/slideMasters/slideMaster1.xml', xm.split('TARİH').join(gece).split('07.00 / 19.00').join('19.00 / 07.00')); }
     var blob=await zip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
     var adi='C EKİBİ FAALİYET ÖZETİ '+gece+' (19.00-07.00).pptx';
     saveAs(blob, adi);
@@ -940,8 +940,15 @@ function akIlkBuyukAkilli(s){
 function akXml(s){
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 }
+function akCumleCase(s){
+    // Cümle akışı: tümünü küçük harfe indir; yalnızca KISA (≤4 harf) tamamı-büyük kısaltmaları (TGS, FLB, APOC, IGA...) koru
+    return s.split(' ').map(function(w){
+        if(w.length>=2 && w.length<=4 && w===akUpper(w) && w!==akLower(w)) return w;
+        return akLower(w);
+    }).join(' ');
+}
 function akKonularCumle(k){
-    var a=k.map(function(t,i){ return i===0 ? akIlkBuyuk(t) : akIlkKucuk(t); });
+    var a=k.map(function(t,i){ var c=akCumleCase(t); return i===0 ? akIlkBuyuk(c) : c; });
     if(a.length===1) return a[0];
     if(a.length===2) return a[0]+' ve '+a[1];
     return a.slice(0,-1).join(', ')+' ve '+a[a.length-1];
@@ -1023,7 +1030,7 @@ window.aksiyonOlustur = async function(){
         function bp(konu, son){
             var bit=son?' adet uygunsuzluk tespit edilmiş ve iş kaydı açılmıştır.':' adet,';
             return '<a:p><a:pPr marL="342900" indent="-342900"><a:buFont typeface="Arial" panose="020B0604020202020204" pitchFamily="34" charset="0"/><a:buChar char="•"/></a:pPr>'+
-                '<a:r><a:rPr lang="tr-TR" sz="3200" dirty="0"/><a:t>'+akXml(akIlkBuyukAkilli(konu))+' kontrollerinde </a:t></a:r>'+
+                '<a:r><a:rPr lang="tr-TR" sz="3200" dirty="0"/><a:t>'+akXml(akIlkBuyukAkilli(akCumleCase(konu)))+' kontrollerinde </a:t></a:r>'+
                 '<a:r><a:rPr lang="tr-TR" sz="3200" b="1" dirty="0">'+ea+'</a:rPr><a:t>y</a:t></a:r>'+
                 '<a:r><a:rPr lang="tr-TR" sz="3200" dirty="0">'+ea+'</a:rPr><a:t>'+bit+'</a:t></a:r></a:p>';
         }
