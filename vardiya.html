@@ -957,15 +957,11 @@ async function geceExcelOlustur(dt, gunduzDosya){
     });
 
     // 6) Gece sheet XML'inde SADECE t="s" hücrelerindeki <v> değerini offset'le
-    var geceSheetUpd = geceSheet.replace(/<c ([^>]*)>([\s\S]*?)<\/c>/g, function(full, attrs, inner){
-        if(attrs.indexOf('t="s"') !== -1){
-            inner = inner.replace(/<v>(\d+)<\/v>/, function(__, idx){
-                return '<v>'+(parseInt(idx)+offset)+'</v>';
-            });
-            return '<c '+attrs+'>'+inner+'</c>';
-        }
-        return full;
-    });
+    // Pattern: <c ... t="s" ...><v>N</v></c> — tek satırlı, kesin eşleşme
+    var geceSheetUpd = geceSheet.replace(
+        /(<c [^>]*t="s"[^>]*><v>)(\d+)(<\/v><\/c>)/g,
+        function(_, pre, idx, post){ return pre+(parseInt(idx)+offset)+post; }
+    );
 
     // 7) Gece si'lerini gündüz sharedStrings'e ekle, count güncelle
     var new_count = offset + gece_sis.length;
