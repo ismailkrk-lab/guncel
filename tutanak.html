@@ -2331,10 +2331,32 @@
                 ihlalCumlesi = `isimli ${p649Firma} personelinin ${aracStr} aracını kullandığı esnada, ${itilenArac}yi eliyle uygunsuz biçimde ittiği tespit edilmiştir.`;
             }
 
+            // Bölge metnini 6.49 için doğru konum ekiyle tamamla.
+            // - Zaten konum ifadesiyle bitiyorsa ("...bölgesinde", "...karşısında")
+            //   tekrar "bölgesinde" eklenmez (çift yazım hatası önlenir).
+            // - "...bölgesi" / "...katı" / "...holü" gibi çıplak isimler uygun
+            //   çekim ekiyle tamamlanır ("bölgesinde" / "katında" / "holünde").
+            function bolgeKonumlu649(b) {
+                const t = (b || '').trim();
+                if (!t || t === '[BÖLGE]') return '[BÖLGE]';
+                const tl = t.toLocaleLowerCase('tr');
+                // Hâlihazırda konum eki içeriyorsa olduğu gibi bırak
+                if (/(bölgesinde|karşısında|katında|holünde|önünde|içinde|üzerinde|arkasında|yanında)$/.test(tl)
+                    || /(nde|nda)$/.test(tl)) {
+                    return t + ',';
+                }
+                // Çıplak isimleri uygun çekimle tamamla
+                if (/bölgesi$/.test(tl)) return t.slice(0, t.length - 7) + 'bölgesinde,';
+                if (/katı$/.test(tl))    return t.slice(0, t.length - 4) + 'katında,';
+                if (/holü$/.test(tl))    return t.slice(0, t.length - 4) + 'holünde,';
+                return t + ' bölgesinde,';
+            }
+            const bolgeStr649 = bolgeKonumlu649(bolge);
+
             // Hız kesici + kablo yok durumunda personel adı öne yazılmaz
             const kisiSatiri = (p649Tip === 'hiz_kesici' && document.getElementById('p649_aparat_durum').value === 'kablo_yok')
-                ? `${bolge} bölgesinde, ${p649Firma} firmasına ait ${p649Personel ? p649Personel + ' ' : ''}${aracStr} aracının hız sınırlayıcı aparat kablosu takılı olmadan kullanıldığı tespit edilmiştir.`
-                : `${bolge} bölgesinde, ${p649Personel} ${ihlalCumlesi}`;
+                ? `${bolgeStr649} ${p649Firma} firmasına ait ${p649Personel ? p649Personel + ' ' : ''}${aracStr} aracının hız sınırlayıcı aparat kablosu takılı olmadan kullanıldığı tespit edilmiştir.`
+                : `${bolgeStr649} ${p649Personel} ${ihlalCumlesi}`;
 
             finalBody = `${tStr} tarihi saat ${sStr}'${saatEki(sStr)} yapılan saha kontrolleri kapsamında, ${kisiSatiri}\n\nKonuyla ilgili olarak ${getMaddeKifCumlesi(madde, kif)}\n\nİş bu tutanak imza altına alınmıştır.`;
         } else if(madde === "KIF_IPTAL") {
