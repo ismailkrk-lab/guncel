@@ -221,11 +221,27 @@
 
                 <div class="step-label" style="margin-top:18px;">3 · Hangi dosyalar?</div>
                 <div class="secimler">
+                    <!-- Excel checkbox + inline dosya seçici -->
+                    <div class="chk" id="gr-excel-chk" style="flex-direction:column;align-items:stretch;gap:0;padding:0;overflow:hidden;">
+                        <label style="display:flex;align-items:center;gap:10px;padding:11px 12px;cursor:pointer;margin:0;">
+                            <input type="checkbox" id="gr-excel" onchange="grSenkron()" style="width:18px;height:18px;cursor:pointer;accent-color:var(--accent);flex-shrink:0;">
+                            <span style="flex:1;">Excel — Vardiya Raporu<small>Terminal Operasyon Vardiya Raporu [tarih] (19.00-07.00).xlsx</small></span>
+                        </label>
+                        <!-- Dosya seçici — sadece Excel tiklenince açılır -->
+                        <div id="gr-excel-yukle-wrap" style="display:none;border-top:1px solid var(--border-input);margin:0 12px;padding:10px 0 12px;">
+                            <div style="font-size:11px;color:var(--text-secondary);margin-bottom:7px;">Devraldığın gündüz vardiya raporunu seç — OPR. FAAL. (19.00-07.00) sekmesi gece şablonuyla değiştirilir.</div>
+                            <label for="gr-excel-input" style="display:flex;align-items:center;gap:9px;background:var(--bg-page);border:1.5px dashed var(--border-input);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--text-secondary);cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-input)'">
+                                <span style="font-size:16px;">📂</span>
+                                <span id="gr-excel-adi">Gündüz raporunu seç (.xlsx)</span>
+                            </label>
+                            <input type="file" id="gr-excel-input" accept=".xlsx" style="display:none;" onchange="grExcelSec(this)">
+                        </div>
+                    </div>
                     <label class="chk"><input type="checkbox" id="gr-ppt" onchange="grSenkron()"><span>PowerPoint — C Ekibi Faaliyet Özeti<small>C EKİBİ FAALİYET ÖZETİ [tarih] (19.00-07.00).pptx</small></span></label>
                     <label class="chk hepsi"><input type="checkbox" id="gr-hepsi" onchange="grHepsiTikle()"><span>Hepsi</span></label>
                 </div>
 
-                <button class="btn-main" id="gr-btn" onclick="grOlustur()">Oluştur ve İndir</button>
+                <button class="btn-main" id="gr-btn" onclick="grOlustur()" style="margin-top:18px;">Oluştur ve İndir</button>
                 <div class="durum" id="gr-durum"></div>
             </div>
             </div><!-- /card-rapor -->
@@ -476,6 +492,16 @@ window.vardiyaSec = function(v){
     document.getElementById('btn-gece').classList.toggle('aktif', v==='gece');
     document.getElementById('gunduz-panel').style.display = (v==='gunduz') ? 'block' : 'none';
     document.getElementById('gece-panel').style.display   = (v==='gece')   ? 'block' : 'none';
+    // Gece seçilince tarih otomatik bugün olsun (eğer boşsa)
+    if(v==='gece'){
+        var gi=document.getElementById('gr-tarih');
+        if(!gi.value){ var t=new Date(); gi.value=t.getFullYear()+'-'+ik(t.getMonth()+1)+'-'+ik(t.getDate()); grOnizle(); }
+    }
+    // Gündüz seçilince tarih otomatik bugün olsun (eğer boşsa)
+    if(v==='gunduz'){
+        var di=document.getElementById('vr-tarih');
+        if(!di.value){ var t=new Date(); di.value=t.getFullYear()+'-'+ik(t.getMonth()+1)+'-'+ik(t.getDate()); vrOnizle(); }
+    }
 };
 
 /* ===== TARİH ÖNİZLEME ===== */
@@ -865,16 +891,184 @@ window.grOnizle = function(){
     var v=document.getElementById('gr-tarih').value, el=document.getElementById('gr-onizleme');
     if(!v){ el.innerHTML='<span class="bos">Tarih seçince tarihler burada görünecek.</span>'; return; }
     var dt=parcala(v);
-    el.innerHTML='🌙 C Ekibi PPT → <b>'+geceStr(dt)+'</b>';
+    el.innerHTML='🌙 Excel & PPT → <b>'+geceStr(dt)+'</b> (19.00-07.00)';
 };
 
 /* ===== GECE — KUTUCUK SENKRON ===== */
 window.grSenkron = function(){
-    document.getElementById('gr-hepsi').checked = document.getElementById('gr-ppt').checked;
+    var ex=document.getElementById('gr-excel').checked;
+    var pp=document.getElementById('gr-ppt').checked;
+    document.getElementById('gr-hepsi').checked = (ex && pp);
+    // Excel yükleme alanını göster/gizle
+    document.getElementById('gr-excel-yukle-wrap').style.display = ex ? 'block' : 'none';
 };
 window.grHepsiTikle = function(){
-    document.getElementById('gr-ppt').checked = document.getElementById('gr-hepsi').checked;
+    var h=document.getElementById('gr-hepsi').checked;
+    document.getElementById('gr-excel').checked = h;
+    document.getElementById('gr-ppt').checked   = h;
+    document.getElementById('gr-excel-yukle-wrap').style.display = h ? 'block' : 'none';
 };
+
+/* ===== GECE — EXCEL DOSYA SEÇİMİ ===== */
+var grGunduzDosyasi = null;
+window.grExcelSec = function(input){
+    var f=input.files[0];
+    if(!f) return;
+    grGunduzDosyasi = f;
+    document.getElementById('gr-excel-adi').textContent = '📄 ' + f.name;
+};
+
+/* ===== GECE — EXCEL ÜRET ===== */
+async function geceExcelOlustur(dt, gunduzDosya){
+    var gece = geceStr(dt);
+
+    // 1) Gündüz dosyasını yükle
+    var gunduzBuf = await new Promise(function(res, rej){
+        var r=new FileReader(); r.onload=function(e){ res(e.target.result); }; r.onerror=rej; r.readAsArrayBuffer(gunduzDosya);
+    });
+    var gunduzZip = await JSZip.loadAsync(gunduzBuf);
+
+    // 2) Gece şablonunu fetch et
+    var geceResp = await fetch('GECE_VARDIYASI_RAPOR.XLSX', {cache:'no-store'});
+    if(!geceResp.ok) throw new Error('Gece şablonu indirilemedi ('+geceResp.status+'). GECE_VARDIYASI_RAPOR.XLSX dosyasını siteyle aynı klasöre koy.');
+    var geceZip = await JSZip.loadAsync(await geceResp.arrayBuffer());
+
+    // 3) Gece şablonunun sheet1.xml'ini al (OPR. FAAL. 19.00-07.00)
+    var geceSheet = await geceZip.file('xl/worksheets/sheet1.xml').async('string');
+
+    // 4) Gündüz dosyasında sheet2 = OPR. FAAL. (19.00-07.00) → gece şablonuyla değiştir
+    gunduzZip.file('xl/worksheets/sheet2.xml', geceSheet);
+
+    // 5) Gündüz sharedStrings'inde [62] ve [63] tarihlerini güncelle
+    var ss = await gunduzZip.file('xl/sharedStrings.xml').async('string');
+    // [62]: OPERASYONEL FAALİYETLER + tarih, [63]: BAKIM-ONARIM + tarih
+    // Mevcut format: "05-06.06.2026 (19.00 - 07.00)" → seçilen tarihle değiştir
+    ss = ss.replace(
+        /OPERASYONEL FA[Aİ]L[İI]YETLER\r?\n[\d\.\-]+ \(19\.00 - 07\.00\)/,
+        'OPERASYONEL FAALİYETLER\r\n'+gece+' (19.00 - 07.00)'
+    );
+    ss = ss.replace(
+        /BAKIM-ONARIM \/ İNŞAİ FA[Aİ]L[İI]YETLER\r?\n[\d\.\-]+ \(19\.00 - 07\.00\)/,
+        'BAKIM-ONARIM \/ İNŞAİ FAALİYETLER\r\n'+gece+' (19.00 - 07.00)'
+    );
+
+    // 6) Gece şablonunun sharedStrings'indeki TARİH placeholder'larını da güncelle
+    //    (sheet2'deki hücreler gece şablonundaki shared string indexlerine bakıyor olabilir —
+    //     ama biz sheet2'yi gece şablonu ile değiştirince gece şablonunun kendi index'leri devreye giriyor)
+    //    Bu durumda gece şablonunun sharedStrings'ini de gündüz dosyasına birleştirmemiz gerekiyor.
+    //    Daha sağlıklı yol: sheet2'deki t="s" referanslarını inlineStr'e çevirelim.
+
+    // Gece şablonu sharedStrings'i al
+    var geceSS = await geceZip.file('xl/sharedStrings.xml').async('string');
+    // Gece şablonunun si listesini çıkar
+    var gece_sis = [];
+    var re_si = /<si>([\s\S]*?)<\/si>/g, m;
+    while((m=re_si.exec(geceSS))!==null) gece_sis.push(m[1]);
+
+    // Gündüz sharedStrings si sayısını bul (mevcut count)
+    var gunduz_count_m = ss.match(/count="(\d+)"/);
+    var gunduz_count = gunduz_count_m ? parseInt(gunduz_count_m[1]) : 0;
+    var gunduz_unique_m = ss.match(/uniqueCount="(\d+)"/);
+    var gunduz_unique = gunduz_unique_m ? parseInt(gunduz_unique_m[1]) : 0;
+
+    // Gece şablonunun si'lerini (TARİH olanlar güncellenerek) gündüz sharedStrings'e ekle
+    // Index 15 = OPERASYONEL + TARİH, Index 16 = BAKIM-ONARIM + TARİH → bunları güncelle
+    var gece_sis_guncellendi = gece_sis.map(function(si, i){
+        if(i===15) return '<t>OPERASYONEL FAALİYETLER\r\n'+gece+' (19.00 - 07.00)</t>';
+        if(i===16) return '<t>BAKIM-ONARIM \/ İNŞAİ FAALİYETLER\r\n'+gece+' (19.00 - 07.00)</t>';
+        return si;
+    });
+
+    // Gece sheet2.xml'indeki t="s" referansları gece şablonunun kendi index'lerine bakıyor (0-17)
+    // Gündüz dosyasına eklenen gece si'lerinin yeni indexleri: gunduz_count + (gece index)
+    var offset = gunduz_count;
+
+    // sheet2'deki <v>N</v> değerlerini (shared string index) offset ile güncelle
+    geceSheet = geceSheet.replace(/<v>(\d+)<\/v>/g, function(match, idx){
+        return '<v>'+(parseInt(idx)+offset)+'</v>';
+    });
+    // Güncellenmiş sheet2'yi tekrar yaz
+    gunduzZip.file('xl/worksheets/sheet2.xml', geceSheet);
+
+    // Gece si'lerini gündüz sharedStrings'e ekle
+    var yeni_sis = gece_sis_guncellendi.map(function(si){ return '<si>'+si+'</si>'; }).join('');
+    ss = ss.replace('</sst>', yeni_sis + '</sst>');
+    // count ve uniqueCount'u güncelle
+    var yeni_count = gunduz_count + gece_sis.length;
+    var yeni_unique = gunduz_unique + gece_sis.length;
+    ss = ss.replace(/count="\d+"/, 'count="'+yeni_count+'"');
+    ss = ss.replace(/uniqueCount="\d+"/, 'uniqueCount="'+yeni_unique+'"');
+    gunduzZip.file('xl/sharedStrings.xml', ss);
+
+    // 7) Gece şablonunun drawing ve _rels dosyalarını da gündüz dosyasına ekle (resimler için)
+    // Gece şablonunda drawing1 ve image1 var, bunları sheet2 için kullanmamız gerekebilir
+    // sheet2._rels kontrol et
+    var sheet2Rels = gunduzZip.file('xl/worksheets/_rels/sheet2.xml.rels');
+    var geceSheetRels = geceZip.file('xl/worksheets/_rels/sheet1.xml.rels');
+    if(geceSheetRels){
+        var geceRelsXml = await geceSheetRels.async('string');
+        // Gece şablonunun drawing referanslarını al
+        var geceDrawingRef = geceRelsXml.match(/Target="\.\.\/drawings\/drawing(\d+)\.xml"/);
+        if(geceDrawingRef){
+            // Gece şablonunun drawing dosyasını kopyala
+            var geceDrawingFile = 'xl/drawings/drawing'+geceDrawingRef[1]+'.xml';
+            if(geceZip.file(geceDrawingFile)){
+                var geceDrawingXml = await geceZip.file(geceDrawingFile).async('string');
+                // Gündüz dosyasında mevcut drawing sayısını bul
+                var gunduzDrawings = Object.keys(gunduzZip.files).filter(function(f){ return /xl\/drawings\/drawing\d+\.xml$/.test(f); });
+                var yeniDrawingNo = gunduzDrawings.length + 1;
+                gunduzZip.file('xl/drawings/drawing'+yeniDrawingNo+'.xml', geceDrawingXml);
+
+                // image kopyala
+                if(geceZip.file('xl/media/image1.png')){
+                    var geceImg = await geceZip.file('xl/media/image1.png').async('arraybuffer');
+                    var mevImages = Object.keys(gunduzZip.files).filter(function(f){ return /xl\/media\/image/.test(f); });
+                    var yeniImgNo = mevImages.length + 1;
+                    gunduzZip.file('xl/media/image'+yeniImgNo+'.png', geceImg);
+
+                    // drawing_rels kopyala (image referansını güncelle)
+                    if(geceZip.file('xl/drawings/_rels/drawing1.xml.rels')){
+                        var dr = await geceZip.file('xl/drawings/_rels/drawing1.xml.rels').async('string');
+                        dr = dr.replace(/image1\.png/, 'image'+yeniImgNo+'.png');
+                        gunduzZip.file('xl/drawings/_rels/drawing'+yeniDrawingNo+'.xml.rels', dr);
+                    }
+                }
+
+                // sheet2.xml.rels'i güncelle: drawing referansı ekle
+                var sheet2RelsXml = sheet2Rels ? await sheet2Rels.async('string') : '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+                // Mevcut en yüksek rId'yi bul
+                var rids = sheet2RelsXml.match(/Id="rId(\d+)"/g)||[];
+                var maxRid = rids.reduce(function(mx,r){ var n=parseInt(r.match(/\d+/)[0]); return n>mx?n:mx; }, 0);
+                var newRid = 'rId'+(maxRid+1);
+                sheet2RelsXml = sheet2RelsXml.replace('</Relationships>',
+                    '<Relationship Id="'+newRid+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing'+yeniDrawingNo+'.xml"/></Relationships>');
+                gunduzZip.file('xl/worksheets/_rels/sheet2.xml.rels', sheet2RelsXml);
+
+                // Ayrıca sheet2.xml'deki drawing referansını güncelle
+                var sh2 = await gunduzZip.file('xl/worksheets/sheet2.xml').async('string');
+                // Gece şablonunun orijinalinde drawing rId bul ve yeni rId ile güncelle
+                var origDrawingRid = geceRelsXml.match(/Id="(rId\d+)"[^>]*drawing/);
+                if(origDrawingRid){
+                    sh2 = sh2.replace('r:id="'+origDrawingRid[1]+'"', 'r:id="'+newRid+'"');
+                    gunduzZip.file('xl/worksheets/sheet2.xml', sh2);
+                }
+
+                // Content_Types'a drawing ekle
+                var ct = await gunduzZip.file('[Content_Types].xml').async('string');
+                if(ct.indexOf('drawing'+yeniDrawingNo+'.xml')===-1){
+                    ct = ct.replace('</Types>', '<Override PartName="/xl/drawings/drawing'+yeniDrawingNo+'.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>');
+                    gunduzZip.file('[Content_Types].xml', ct);
+                }
+            }
+        }
+    }
+
+    // 8) Blob oluştur ve indir
+    var blob = await gunduzZip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var adi = 'Terminal Operasyon Vardiya Raporu '+gece+' (19.00-07.00).xlsx';
+    saveAs(blob, adi);
+    return adi;
+}
 
 /* ===== GECE — C EKİBİ PPT ÜRET ===== */
 async function gecePptOlustur(dt){
@@ -898,11 +1092,15 @@ window.grOlustur = async function(){
     var v=document.getElementById('gr-tarih').value;
     if(!v){ durum.style.color='var(--err)'; durum.textContent='Önce bir tarih seç.'; return; }
     if(typeof JSZip==='undefined'){ durum.style.color='var(--err)'; durum.textContent='JSZip yüklenemedi (internet bağlantısını kontrol et).'; return; }
+    var ex=document.getElementById('gr-excel').checked;
     var pp=document.getElementById('gr-ppt').checked;
-    if(!pp){ durum.style.color='var(--err)'; durum.textContent='En az bir dosya türü seç.'; return; }
+    if(!ex && !pp){ durum.style.color='var(--err)'; durum.textContent='En az bir dosya türü seç.'; return; }
+    // Excel seçiliyse gündüz dosyası zorunlu
+    if(ex && !grGunduzDosyasi){ durum.style.color='var(--err)'; durum.textContent='Excel için gündüz vardiya raporunu yükle.'; return; }
     var dt=parcala(v), inenler=[];
     btn.disabled=true; durum.style.color='var(--text-secondary)';
     try{
+        if(ex){ durum.textContent='Excel hazırlanıyor...'; inenler.push(await geceExcelOlustur(dt, grGunduzDosyasi)); }
         if(pp){ durum.textContent='C Ekibi PowerPoint hazırlanıyor...'; inenler.push(await gecePptOlustur(dt)); }
         durum.style.color='var(--ok)'; durum.innerHTML='✅ İndirildi:<br>'+inenler.join('<br>');
     }catch(e){
