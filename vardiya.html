@@ -933,137 +933,111 @@ async function geceExcelOlustur(dt, gunduzDosya){
     if(!geceResp.ok) throw new Error('Gece şablonu indirilemedi ('+geceResp.status+'). GECE_VARDIYASI_RAPOR.XLSX dosyasını siteyle aynı klasöre koy.');
     var geceZip = await JSZip.loadAsync(await geceResp.arrayBuffer());
 
-    // 3) Gece şablonunun sheet1.xml'ini al (OPR. FAAL. 19.00-07.00)
+    // 3) Gece şablonunun sheet1.xml ve sharedStrings'ini al
     var geceSheet = await geceZip.file('xl/worksheets/sheet1.xml').async('string');
+    var geceSS    = await geceZip.file('xl/sharedStrings.xml').async('string');
 
-    // 4) Gündüz dosyasında sheet2 = OPR. FAAL. (19.00-07.00) → gece şablonuyla değiştir
-    gunduzZip.file('xl/worksheets/sheet2.xml', geceSheet);
+    // Gece si'lerini çıkar (<si>...</si> tam bloklar)
+    var gece_sis_raw = [];
+    var re_si = /(<si>[\s\S]*?<\/si>)/g, m;
+    while((m=re_si.exec(geceSS))!==null) gece_sis_raw.push(m[1]);
 
-    // 5) Gündüz sharedStrings'inde [62] ve [63] tarihlerini güncelle
+    // 4) Gündüz sharedStrings — offset = mevcut si sayısı
     var ss = await gunduzZip.file('xl/sharedStrings.xml').async('string');
-    // [62]: OPERASYONEL FAALİYETLER + tarih, [63]: BAKIM-ONARIM + tarih
-    // Mevcut format: "05-06.06.2026 (19.00 - 07.00)" → seçilen tarihle değiştir
-    ss = ss.replace(
-        /OPERASYONEL FA[Aİ]L[İI]YETLER\r?\n[\d\.\-]+ \(19\.00 - 07\.00\)/,
-        'OPERASYONEL FAALİYETLER\r\n'+gece+' (19.00 - 07.00)'
-    );
-    ss = ss.replace(
-        /BAKIM-ONARIM \/ İNŞAİ FA[Aİ]L[İI]YETLER\r?\n[\d\.\-]+ \(19\.00 - 07\.00\)/,
-        'BAKIM-ONARIM \/ İNŞAİ FAALİYETLER\r\n'+gece+' (19.00 - 07.00)'
-    );
+    var gunduz_sis_raw = [];
+    var re_si2 = /(<si>[\s\S]*?<\/si>)/g;
+    while((m=re_si2.exec(ss))!==null) gunduz_sis_raw.push(m[1]);
+    var offset = gunduz_sis_raw.length;  // 92
 
-    // 6) Gece şablonunun sharedStrings'indeki TARİH placeholder'larını da güncelle
-    //    (sheet2'deki hücreler gece şablonundaki shared string indexlerine bakıyor olabilir —
-    //     ama biz sheet2'yi gece şablonu ile değiştirince gece şablonunun kendi index'leri devreye giriyor)
-    //    Bu durumda gece şablonunun sharedStrings'ini de gündüz dosyasına birleştirmemiz gerekiyor.
-    //    Daha sağlıklı yol: sheet2'deki t="s" referanslarını inlineStr'e çevirelim.
-
-    // Gece şablonu sharedStrings'i al
-    var geceSS = await geceZip.file('xl/sharedStrings.xml').async('string');
-    // Gece şablonunun si listesini çıkar
-    var gece_sis = [];
-    var re_si = /<si>([\s\S]*?)<\/si>/g, m;
-    while((m=re_si.exec(geceSS))!==null) gece_sis.push(m[1]);
-
-    // Gündüz sharedStrings si sayısını bul (mevcut count)
-    var gunduz_count_m = ss.match(/count="(\d+)"/);
-    var gunduz_count = gunduz_count_m ? parseInt(gunduz_count_m[1]) : 0;
-    var gunduz_unique_m = ss.match(/uniqueCount="(\d+)"/);
-    var gunduz_unique = gunduz_unique_m ? parseInt(gunduz_unique_m[1]) : 0;
-
-    // Gece şablonunun si'lerini (TARİH olanlar güncellenerek) gündüz sharedStrings'e ekle
-    // Index 15 = OPERASYONEL + TARİH, Index 16 = BAKIM-ONARIM + TARİH → bunları güncelle
-    var gece_sis_guncellendi = gece_sis.map(function(si, i){
-        if(i===15) return '<t>OPERASYONEL FAALİYETLER\r\n'+gece+' (19.00 - 07.00)</t>';
-        if(i===16) return '<t>BAKIM-ONARIM \/ İNŞAİ FAALİYETLER\r\n'+gece+' (19.00 - 07.00)</t>';
+    // 5) Gece si'lerini tarih güncelleyerek hazırla
+    var gece_sis_upd = gece_sis_raw.map(function(si, i){
+        if(i===15) return '<si><t>OPERASYONEL FAALİYETLER\r\n'+gece+' (19.00 - 07.00)</t></si>';
+        if(i===16) return '<si><t>BAKIM-ONARIM \/ \u0130N\u015eA\u0130 FAAL\u0130YETLER\r\n'+gece+' (19.00 - 07.00)</t></si>';
         return si;
     });
 
-    // Gece sheet2.xml'indeki t="s" referansları gece şablonunun kendi index'lerine bakıyor (0-17)
-    // Gündüz dosyasına eklenen gece si'lerinin yeni indexleri: gunduz_count + (gece index)
-    var offset = gunduz_count;
-
-    // sheet2'deki <v>N</v> değerlerini (shared string index) offset ile güncelle
-    geceSheet = geceSheet.replace(/<v>(\d+)<\/v>/g, function(match, idx){
-        return '<v>'+(parseInt(idx)+offset)+'</v>';
+    // 6) Gece sheet XML'inde SADECE t="s" olan hücrelerin <v> değerini offset'le
+    //    t="num" olan hücreler (satır numaraları, sayısal veriler) DOKUNULMAZ
+    var geceSheetUpd = geceSheet.replace(/<c ([^>]*)>([\s\S]*?)<\/c>/g, function(cell, attrs, inner){
+        if(attrs.indexOf('t="s"') !== -1){
+            inner = inner.replace(/<v>(\d+)<\/v>/, function(vm, idx){ return '<v>'+(parseInt(idx)+offset)+'</v>'; });
+            return '<c '+attrs+'>'+inner+'</c>';
+        }
+        return cell;
     });
-    // Güncellenmiş sheet2'yi tekrar yaz
-    gunduzZip.file('xl/worksheets/sheet2.xml', geceSheet);
 
-    // Gece si'lerini gündüz sharedStrings'e ekle
-    var yeni_sis = gece_sis_guncellendi.map(function(si){ return '<si>'+si+'</si>'; }).join('');
-    ss = ss.replace('</sst>', yeni_sis + '</sst>');
-    // count ve uniqueCount'u güncelle
-    var yeni_count = gunduz_count + gece_sis.length;
-    var yeni_unique = gunduz_unique + gece_sis.length;
-    ss = ss.replace(/count="\d+"/, 'count="'+yeni_count+'"');
-    ss = ss.replace(/uniqueCount="\d+"/, 'uniqueCount="'+yeni_unique+'"');
-    gunduzZip.file('xl/sharedStrings.xml', ss);
+    // 7) Gece si'lerini gündüz sharedStrings'e ekle, count güncelle
+    var new_count = offset + gece_sis_raw.length;
+    ss = ss.replace('</sst>', gece_sis_upd.join('')+'</sst>');
+    ss = ss.replace(/count="\d+"/,       'count="'+new_count+'"');
+    ss = ss.replace(/uniqueCount="\d+"/, 'uniqueCount="'+new_count+'"');
 
-    // 7) Gece şablonunun drawing ve _rels dosyalarını da gündüz dosyasına ekle (resimler için)
-    // Gece şablonunda drawing1 ve image1 var, bunları sheet2 için kullanmamız gerekebilir
-    // sheet2._rels kontrol et
-    var sheet2Rels = gunduzZip.file('xl/worksheets/_rels/sheet2.xml.rels');
+    // 8) Drawing + image kopyala (gece şablonundaki logo/resim için)
     var geceSheetRels = geceZip.file('xl/worksheets/_rels/sheet1.xml.rels');
+    var newRid = 'rId10', yeniDrawingNo = 7, yeniImgNo = 2;
     if(geceSheetRels){
         var geceRelsXml = await geceSheetRels.async('string');
-        // Gece şablonunun drawing referanslarını al
         var geceDrawingRef = geceRelsXml.match(/Target="\.\.\/drawings\/drawing(\d+)\.xml"/);
         if(geceDrawingRef){
-            // Gece şablonunun drawing dosyasını kopyala
             var geceDrawingFile = 'xl/drawings/drawing'+geceDrawingRef[1]+'.xml';
             if(geceZip.file(geceDrawingFile)){
-                var geceDrawingXml = await geceZip.file(geceDrawingFile).async('string');
-                // Gündüz dosyasında mevcut drawing sayısını bul
+                // Mevcut drawing/image sayısı
                 var gunduzDrawings = Object.keys(gunduzZip.files).filter(function(f){ return /xl\/drawings\/drawing\d+\.xml$/.test(f); });
-                var yeniDrawingNo = gunduzDrawings.length + 1;
+                var gunduzImgs     = Object.keys(gunduzZip.files).filter(function(f){ return /xl\/media\/image\d+/.test(f); });
+                yeniDrawingNo = gunduzDrawings.length + 1;
+                yeniImgNo     = gunduzImgs.length + 1;
+
+                // Drawing XML ve image kopyala
+                var geceDrawingXml = await geceZip.file(geceDrawingFile).async('string');
                 gunduzZip.file('xl/drawings/drawing'+yeniDrawingNo+'.xml', geceDrawingXml);
 
-                // image kopyala
                 if(geceZip.file('xl/media/image1.png')){
                     var geceImg = await geceZip.file('xl/media/image1.png').async('arraybuffer');
-                    var mevImages = Object.keys(gunduzZip.files).filter(function(f){ return /xl\/media\/image/.test(f); });
-                    var yeniImgNo = mevImages.length + 1;
                     gunduzZip.file('xl/media/image'+yeniImgNo+'.png', geceImg);
-
-                    // drawing_rels kopyala (image referansını güncelle)
-                    if(geceZip.file('xl/drawings/_rels/drawing1.xml.rels')){
-                        var dr = await geceZip.file('xl/drawings/_rels/drawing1.xml.rels').async('string');
-                        dr = dr.replace(/image1\.png/, 'image'+yeniImgNo+'.png');
-                        gunduzZip.file('xl/drawings/_rels/drawing'+yeniDrawingNo+'.xml.rels', dr);
-                    }
                 }
 
-                // sheet2.xml.rels'i güncelle: drawing referansı ekle
-                var sheet2RelsXml = sheet2Rels ? await sheet2Rels.async('string') : '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
-                // Mevcut en yüksek rId'yi bul
-                var rids = sheet2RelsXml.match(/Id="rId(\d+)"/g)||[];
+                // drawing_rels: image referansını yeni numarayla güncelle
+                if(geceZip.file('xl/drawings/_rels/drawing1.xml.rels')){
+                    var dr = await geceZip.file('xl/drawings/_rels/drawing1.xml.rels').async('string');
+                    dr = dr.replace('image1.png', 'image'+yeniImgNo+'.png');
+                    gunduzZip.file('xl/drawings/_rels/drawing'+yeniDrawingNo+'.xml.rels', dr);
+                }
+
+                // sheet2.xml.rels: yeni drawing referansı ekle
+                var sheet2RelsXml = gunduzZip.file('xl/worksheets/_rels/sheet2.xml.rels')
+                    ? await gunduzZip.file('xl/worksheets/_rels/sheet2.xml.rels').async('string')
+                    : '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>';
+                var rids = (sheet2RelsXml.match(/Id="rId(\d+)"/g)||[]);
                 var maxRid = rids.reduce(function(mx,r){ var n=parseInt(r.match(/\d+/)[0]); return n>mx?n:mx; }, 0);
-                var newRid = 'rId'+(maxRid+1);
+                newRid = 'rId'+(maxRid+1);
                 sheet2RelsXml = sheet2RelsXml.replace('</Relationships>',
-                    '<Relationship Id="'+newRid+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing'+yeniDrawingNo+'.xml"/></Relationships>');
+                    '<Relationship Id="'+newRid+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"'+
+                    ' Target="../drawings/drawing'+yeniDrawingNo+'.xml"/></Relationships>');
                 gunduzZip.file('xl/worksheets/_rels/sheet2.xml.rels', sheet2RelsXml);
 
-                // Ayrıca sheet2.xml'deki drawing referansını güncelle
-                var sh2 = await gunduzZip.file('xl/worksheets/sheet2.xml').async('string');
-                // Gece şablonunun orijinalinde drawing rId bul ve yeni rId ile güncelle
+                // sheet2.xml'deki drawing rId'yi yeni rId ile güncelle
                 var origDrawingRid = geceRelsXml.match(/Id="(rId\d+)"[^>]*drawing/);
                 if(origDrawingRid){
-                    sh2 = sh2.replace('r:id="'+origDrawingRid[1]+'"', 'r:id="'+newRid+'"');
-                    gunduzZip.file('xl/worksheets/sheet2.xml', sh2);
+                    geceSheetUpd = geceSheetUpd.replace('r:id="'+origDrawingRid[1]+'"', 'r:id="'+newRid+'"');
                 }
 
                 // Content_Types'a drawing ekle
                 var ct = await gunduzZip.file('[Content_Types].xml').async('string');
                 if(ct.indexOf('drawing'+yeniDrawingNo+'.xml')===-1){
-                    ct = ct.replace('</Types>', '<Override PartName="/xl/drawings/drawing'+yeniDrawingNo+'.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>');
+                    ct = ct.replace('</Types>',
+                        '<Override PartName="/xl/drawings/drawing'+yeniDrawingNo+'.xml"'+
+                        ' ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>');
                     gunduzZip.file('[Content_Types].xml', ct);
                 }
             }
         }
     }
 
-    // 8) Blob oluştur ve indir
+    // 9) Güncellenmiş sheet2 ve sharedStrings'i yaz
+    gunduzZip.file('xl/worksheets/sheet2.xml', geceSheetUpd);
+    gunduzZip.file('xl/sharedStrings.xml', ss);
+
+    // 10) Blob oluştur ve indir
     var blob = await gunduzZip.generateAsync({type:'blob', compression:'DEFLATE', mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     var adi = 'Terminal Operasyon Vardiya Raporu '+gece+' (19.00-07.00).xlsx';
     saveAs(blob, adi);
